@@ -66,18 +66,15 @@ namespace EarTrumpet.UI.Helpers
                 var device = deviceView?.Device;
                 if (device == null || !AppDragDrop.CanDrop(app, device, dragInfo.ListDeviceId))
                 {
-                    DevTrace.Write($"Flyout drop ignored: {AppDragDrop.DescribeDropRejectReason(app, device, device != null, dragInfo.ListDeviceId)}");
                     return;
                 }
 
                 var host = getHost();
                 if (host == null)
                 {
-                    DevTrace.Write("Flyout drop failed: no IPopupHostViewModel");
                     return;
                 }
 
-                DevTrace.Write($"Flyout drop: {app.DisplayName} (from list {dragInfo.ListDeviceId}) -> {device.DisplayName}");
                 host.MoveAppToDevice(app, device);
                 e.Effects = DragDropEffects.Move;
                 e.Handled = true;

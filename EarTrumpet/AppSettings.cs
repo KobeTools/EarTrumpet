@@ -166,6 +166,15 @@ namespace EarTrumpet
             set => _settings.Set("UseLogarithmicVolume", value);
         }
 
+        /// <summary>
+        /// 0 = no drag glow; 12 = subtle default; 100 = strongest.
+        /// </summary>
+        public int AppDragVisualIntensity
+        {
+            get => _settings.Get("AppDragVisualIntensity", UI.Helpers.AppDragVisualSettings.DefaultIntensity);
+            set => _settings.Set("AppDragVisualIntensity", System.Math.Max(0, System.Math.Min(value, UI.Helpers.AppDragVisualSettings.MaxIntensity)));
+        }
+
         public WINDOWPLACEMENT? FullMixerWindowPlacement
         {
             get => _settings.Get("FullMixerWindowPlacement", default(WINDOWPLACEMENT?));

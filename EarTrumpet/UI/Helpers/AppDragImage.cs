@@ -2,12 +2,14 @@ using EarTrumpet.Extensions;
 using EarTrumpet.Interop;
 using EarTrumpet.UI.Controls;
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using ComIDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
@@ -18,45 +20,10 @@ using DrawingImageLockMode = System.Drawing.Imaging.ImageLockMode;
 namespace EarTrumpet.UI.Helpers
 {
     /// <summary>
-    /// Optional Windows shell drag image (often ignored by WPF DoDragDrop). Use AppDragOverlay for the visible icon.
+    /// Builds drag images (icon + optional glow) and registers them with the shell drag helper.
     /// </summary>
     public static class AppDragImage
     {
-        public static void TryApplyShell(DataObject data, FrameworkElement iconRoot, System.Windows.Point dragStartInIcon)
-        {
-            if (data == null || iconRoot == null)
-            {
-                DevTrace.Write("AppDragImage: skipped (null args)");
-                return;
-            }
-
-            var bitmap = TryGetIconBitmap(iconRoot);
-            if (bitmap != null)
-            {
-                try
-                {
-                    data.SetData(DataFormats.Bitmap, bitmap);
-                }
-                catch (Exception ex)
-                {
-                    DevTrace.LogException("AppDragImage SetData Bitmap", ex);
-                }
-            }
-
-            var comData = (ComIDataObject)data;
-            if (TryApplyShellFromWindow(iconRoot, dragStartInIcon, comData))
-            {
-                return;
-            }
-
-            if (bitmap != null && TryApplyShellFromBitmap(bitmap, dragStartInIcon, comData))
-            {
-                return;
-            }
-
-            DevTrace.Write("AppDragImage: shell drag image not applied");
-        }
-
         public const double FallbackIconSizeDip = 24;
 
         public static Size GetDisplaySize(FrameworkElement iconRoot)
@@ -93,12 +60,163 @@ namespace EarTrumpet.UI.Helpers
             return CaptureElement(iconRoot);
         }
 
-        private static bool TryApplyShellFromWindow(FrameworkElement iconRoot, System.Windows.Point dragStartInIcon, ComIDataObject comData)
+        /// <summary>
+        /// Registers a shell drag image (replaces WPF's empty dashed rectangle). Returns true when applied.
+        /// </summary>
+        public static bool TryApplyShell(DataObject data, FrameworkElement iconRoot, Point dragHotspotInIcon)
+        {
+            if (data == null || iconRoot == null)
+            {
+                return false;
+            }
+
+            var intensity = AppDragVisualSettings.GetIntensity();
+            var icon = TryGetIconBitmap(iconRoot);
+            var comData = (ComIDataObject)data;
+
+            if (icon != null)
+            {
+                var display = GetDisplaySize(iconRoot);
+                var dragBitmap = CreateDragImageBitmap(iconRoot, icon, display, intensity, dragHotspotInIcon, out var hotspotX, out var hotspotY);
+                if (dragBitmap != null && TryApplyShellFromBitmap(dragBitmap, hotspotX, hotspotY, comData))
+                {
+                    return true;
+                }
+            }
+
+            return TryApplyShellFromWindow(iconRoot, dragHotspotInIcon, comData);
+        }
+
+        public static BitmapSource CreateDragImageBitmap(
+            FrameworkElement iconRoot,
+            BitmapSource icon,
+            Size displaySizeDip,
+            int intensity,
+            Point dragHotspotInIcon,
+            out int hotspotX,
+            out int hotspotY)
+        {
+            hotspotX = 0;
+            hotspotY = 0;
+
+            if (icon == null)
+            {
+                return null;
+            }
+
+            GetScale(iconRoot, displaySizeDip, out var scaleX, out var scaleY, out var dpiX, out var dpiY);
+
+            var paddingDip = intensity > 0 ? Math.Max(3, AppDragVisualSettings.GetGlowPaddingDip(intensity)) : 0;
+            var totalWidthDip = displaySizeDip.Width + (paddingDip * 2);
+            var totalHeightDip = displaySizeDip.Height + (paddingDip * 2);
+
+            var pixelWidth = Math.Max(1, (int)Math.Round(totalWidthDip * scaleX));
+            var pixelHeight = Math.Max(1, (int)Math.Round(totalHeightDip * scaleY));
+
+            var visualRoot = BuildDragVisual(icon, displaySizeDip.Width, displaySizeDip.Height, intensity);
+            visualRoot.Margin = new Thickness(paddingDip);
+            var container = new Grid
+            {
+                Width = totalWidthDip,
+                Height = totalHeightDip,
+                Background = Brushes.Transparent,
+                IsHitTestVisible = false,
+                SnapsToDevicePixels = true,
+            };
+            container.Children.Add(visualRoot);
+
+            container.Measure(new Size(totalWidthDip, totalHeightDip));
+            container.Arrange(new Rect(0, 0, totalWidthDip, totalHeightDip));
+
+            var rtb = new RenderTargetBitmap(pixelWidth, pixelHeight, dpiX, dpiY, PixelFormats.Pbgra32);
+            rtb.Render(container);
+            rtb.Freeze();
+
+            var hotspotDipX = dragHotspotInIcon.X + paddingDip;
+            var hotspotDipY = dragHotspotInIcon.Y + paddingDip;
+            hotspotX = (int)Math.Round(Clamp(hotspotDipX * scaleX, 0, pixelWidth - 1), MidpointRounding.AwayFromZero);
+            hotspotY = (int)Math.Round(Clamp(hotspotDipY * scaleY, 0, pixelHeight - 1), MidpointRounding.AwayFromZero);
+
+            return rtb;
+        }
+
+        internal static FrameworkElement BuildDragVisual(BitmapSource bitmap, double width, double height, int intensity)
+        {
+            AppDragVisualSettings.GetVisualParameters(
+                intensity,
+                out var haloOpacity,
+                out var blurRadius,
+                out var glowOpacity,
+                out var glowBlurRadius,
+                out _);
+
+            var children = new List<UIElement>();
+
+            if (blurRadius >= 0.5 && haloOpacity > 0.005)
+            {
+                var halo = new Image
+                {
+                    Source = bitmap,
+                    Width = width,
+                    Height = height,
+                    Stretch = Stretch.Uniform,
+                    IsHitTestVisible = false,
+                    SnapsToDevicePixels = true,
+                    Opacity = haloOpacity,
+                    Effect = new BlurEffect
+                    {
+                        Radius = blurRadius,
+                        RenderingBias = RenderingBias.Performance,
+                    },
+                };
+                RenderOptions.SetBitmapScalingMode(halo, BitmapScalingMode.Fant);
+                children.Add(halo);
+            }
+
+            var icon = new Image
+            {
+                Source = bitmap,
+                Width = width,
+                Height = height,
+                Stretch = Stretch.Uniform,
+                IsHitTestVisible = false,
+                SnapsToDevicePixels = true,
+            };
+            RenderOptions.SetBitmapScalingMode(icon, BitmapScalingMode.Fant);
+
+            if (glowOpacity > 0.005)
+            {
+                icon.Effect = new DropShadowEffect
+                {
+                    Color = Colors.White,
+                    BlurRadius = glowBlurRadius,
+                    ShadowDepth = 0,
+                    Opacity = glowOpacity,
+                };
+            }
+
+            children.Add(icon);
+
+            var grid = new Grid
+            {
+                Width = width,
+                Height = height,
+                IsHitTestVisible = false,
+                SnapsToDevicePixels = true,
+            };
+            foreach (var child in children)
+            {
+                grid.Children.Add(child);
+            }
+
+            return grid;
+        }
+
+        private static bool TryApplyShellFromWindow(FrameworkElement iconRoot, Point dragStartInIcon, ComIDataObject comData)
         {
             var source = PresentationSource.FromVisual(iconRoot) as HwndSource;
             if (source?.Handle == IntPtr.Zero)
             {
-                DevTrace.Write("AppDragImage: no HWND for window snapshot");
                 return false;
             }
 
@@ -108,30 +226,21 @@ namespace EarTrumpet.UI.Helpers
                 var pt = new User32.POINT { x = (int)Math.Round(screen.X), y = (int)Math.Round(screen.Y) };
                 if (!User32.ScreenToClient(source.Handle, ref pt))
                 {
-                    DevTrace.Write("AppDragImage: ScreenToClient failed");
                     return false;
                 }
 
-                if (DragSourceHelper.TrySetWindowDragImage(source.Handle, pt.x, pt.y, comData))
-                {
-                    DevTrace.Write($"AppDragImage: shell window drag image at {pt.x},{pt.y}");
-                    return true;
-                }
+                return DragSourceHelper.TrySetWindowDragImage(source.Handle, pt.x, pt.y, comData);
             }
-            catch (Exception ex)
+            catch
             {
-                DevTrace.LogException("AppDragImage window", ex);
+                return false;
             }
-
-            return false;
         }
 
-        private static bool TryApplyShellFromBitmap(BitmapSource bitmap, System.Windows.Point dragStartInIcon, ComIDataObject comData)
+        private static bool TryApplyShellFromBitmap(BitmapSource bitmap, int hotspotX, int hotspotY, ComIDataObject comData)
         {
             var width = Math.Max(1, bitmap.PixelWidth);
             var height = Math.Max(1, bitmap.PixelHeight);
-            var hotspotX = (int)Math.Round(Clamp(dragStartInIcon.X, 0, width - 1), MidpointRounding.AwayFromZero);
-            var hotspotY = (int)Math.Round(Clamp(dragStartInIcon.Y, 0, height - 1), MidpointRounding.AwayFromZero);
 
             IntPtr hBitmap = IntPtr.Zero;
             try
@@ -139,22 +248,33 @@ namespace EarTrumpet.UI.Helpers
                 hBitmap = CreateHBitmap(bitmap);
                 if (hBitmap == IntPtr.Zero)
                 {
-                    DevTrace.Write("AppDragImage: CreateHBitmap failed");
                     return false;
                 }
 
-                if (DragSourceHelper.TrySetBitmapDragImage(hBitmap, width, height, hotspotX, hotspotY, comData))
-                {
-                    DevTrace.Write($"AppDragImage: shell bitmap drag image {width}x{height}");
-                    return true;
-                }
+                return DragSourceHelper.TrySetBitmapDragImage(hBitmap, width, height, hotspotX, hotspotY, comData);
             }
-            catch (Exception ex)
+            catch
             {
-                DevTrace.LogException("AppDragImage bitmap", ex);
+                return false;
             }
+        }
 
-            return false;
+        private static void GetScale(FrameworkElement iconRoot, Size displaySizeDip, out double scaleX, out double scaleY, out double dpiX, out double dpiY)
+        {
+            scaleX = 1.0;
+            scaleY = 1.0;
+            dpiX = 96.0;
+            dpiY = 96.0;
+
+            var source = iconRoot != null ? PresentationSource.FromVisual(iconRoot) : null;
+            if (source?.CompositionTarget != null)
+            {
+                var transform = source.CompositionTarget.TransformToDevice;
+                scaleX = transform.M11;
+                scaleY = transform.M22;
+                dpiX = 96.0 * scaleX;
+                dpiY = 96.0 * scaleY;
+            }
         }
 
         private static BitmapSource CaptureElement(FrameworkElement element)
@@ -164,19 +284,7 @@ namespace EarTrumpet.UI.Helpers
                 element.UpdateLayout();
                 var display = GetDisplaySize(element);
 
-                var dpiX = 96.0;
-                var dpiY = 96.0;
-                var scaleX = 1.0;
-                var scaleY = 1.0;
-                var source = PresentationSource.FromVisual(element);
-                if (source?.CompositionTarget != null)
-                {
-                    var transform = source.CompositionTarget.TransformToDevice;
-                    scaleX = transform.M11;
-                    scaleY = transform.M22;
-                    dpiX = 96.0 * scaleX;
-                    dpiY = 96.0 * scaleY;
-                }
+                GetScale(element, display, out var scaleX, out var scaleY, out var dpiX, out var dpiY);
 
                 var pixelWidth = (int)Math.Max(1, Math.Round(display.Width * scaleX));
                 var pixelHeight = (int)Math.Max(1, Math.Round(display.Height * scaleY));
@@ -186,9 +294,8 @@ namespace EarTrumpet.UI.Helpers
                 rtb.Freeze();
                 return rtb;
             }
-            catch (Exception ex)
+            catch
             {
-                DevTrace.LogException("AppDragImage CaptureElement", ex);
                 return null;
             }
         }

@@ -171,6 +171,28 @@
                           IsChecked="{Binding UseGlobalMouseWheelHook, Mode=TwoWay}" />
             </StackPanel>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:EarTrumpetDragSettingsPageViewModel}">
+            <StackPanel Margin="0,0,24,12"
+                        MaxWidth="480"
+                        Orientation="Vertical">
+                <TextBlock Style="{StaticResource BodySubText}"
+                           Text="{x:Static resx:Resources.SettingsAppDragVisualDescription}"
+                           TextWrapping="Wrap" />
+                <TextBlock Margin="0,20,0,8"
+                           Style="{StaticResource BodyText}"
+                           Text="{Binding IntensityLabel}" />
+                <Slider HorizontalAlignment="Stretch"
+                        IsSnapToTickEnabled="True"
+                        Maximum="100"
+                        Minimum="0"
+                        TickFrequency="5"
+                        Value="{Binding AppDragVisualIntensity, Mode=TwoWay}" />
+                <TextBlock Margin="0,12,0,0"
+                           Style="{StaticResource BodySubText}"
+                           Text="{x:Static resx:Resources.SettingsAppDragVisualHint}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:EarTrumpetCommunitySettingsPageViewModel}">
             <StackPanel Orientation="Vertical">
                 <CheckBox HorizontalAlignment="Left"

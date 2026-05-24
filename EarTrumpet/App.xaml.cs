@@ -267,6 +267,7 @@ namespace EarTrumpet
                     {
                         new EarTrumpetShortcutsPageViewModel(Settings),
                         new EarTrumpetMouseSettingsPageViewModel(Settings),
+                        new EarTrumpetDragSettingsPageViewModel(Settings),
                         new EarTrumpetCommunitySettingsPageViewModel(Settings),
                         new EarTrumpetLegacySettingsPageViewModel(Settings),
                         new EarTrumpetAboutPageViewModel(() => _errorReporter.DisplayDiagnosticData(), Settings)

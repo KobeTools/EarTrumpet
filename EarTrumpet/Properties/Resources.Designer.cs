@@ -1447,6 +1447,42 @@ namespace EarTrumpet.Properties {
                 return ResourceManager.GetString("SettingsUseLogarithmicVolume", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Drag and drop.
+        /// </summary>
+        public static string DragDropSettingsPageText {
+            get {
+                return ResourceManager.GetString("DragDropSettingsPageText", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Adjust how strongly app icons glow while you drag them between devices. 0 turns the effect off.
+        /// </summary>
+        public static string SettingsAppDragVisualDescription {
+            get {
+                return ResourceManager.GetString("SettingsAppDragVisualDescription", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Drag icon glow intensity: {0}.
+        /// </summary>
+        public static string SettingsAppDragVisualIntensityValue {
+            get {
+                return ResourceManager.GetString("SettingsAppDragVisualIntensityValue", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Drag an app icon onto another device to move its audio. The default is very subtle; increase the slider for a stronger halo.
+        /// </summary>
+        public static string SettingsAppDragVisualHint {
+            get {
+                return ResourceManager.GetString("SettingsAppDragVisualHint", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Use the scroll wheel to change volume while hovering over the EarTrumpet icon.

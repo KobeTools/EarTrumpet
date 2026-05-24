@@ -88,27 +88,21 @@ namespace EarTrumpet.UI.Views
             {
                 if (!AppDragDrop.TryGetDragInfo(e.Data, out var dragInfo))
                 {
-                    DevTrace.Write($"Drop ignored on {Device.DisplayName}: no drag payload");
                     return;
                 }
 
                 var app = dragInfo.App;
-                var listDeviceId = dragInfo.ListDeviceId;
-
-                if (!AppDragDrop.CanDrop(app, Device, listDeviceId))
+                if (!AppDragDrop.CanDrop(app, Device, dragInfo.ListDeviceId))
                 {
-                    DevTrace.Write($"Drop ignored on {Device.DisplayName}: {AppDragDrop.DescribeDropRejectReason(app, Device, true, listDeviceId)}");
                     return;
                 }
 
                 var host = Window.GetWindow(this)?.DataContext as IPopupHostViewModel;
                 if (host == null)
                 {
-                    DevTrace.Write($"Drop failed on {Device.DisplayName}: no IPopupHostViewModel");
                     return;
                 }
 
-                DevTrace.Write($"Drop: {app.DisplayName} -> {Device.DisplayName} ({Device.Id})");
                 host.MoveAppToDevice(app, Device);
                 e.Effects = DragDropEffects.Move;
                 e.Handled = true;

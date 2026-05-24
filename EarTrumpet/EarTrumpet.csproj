@@ -236,6 +236,7 @@
     <Compile Include="UI\ViewModels\BackstackViewModel.cs" />
     <Compile Include="UI\ViewModels\EarTrumpetCommunitySettingsPageViewModel.cs" />
     <Compile Include="UI\ViewModels\EarTrumpetMouseSettingsPageViewModel.cs" />
+    <Compile Include="UI\ViewModels\EarTrumpetDragSettingsPageViewModel.cs" />
     <Compile Include="UI\ViewModels\EarTrumpetShortcutsPageViewModel.cs" />
     <Compile Include="Extensibility\IEarTrumpetAddonAppContent.cs" />
     <Compile Include="Extensibility\IEarTrumpetAddonDeviceContent.cs" />
@@ -327,7 +328,7 @@
     <Compile Include="UI\Helpers\AppDragDropFlyout.cs" />
     <Compile Include="Interop\DragSourceHelper.cs" />
     <Compile Include="UI\Helpers\AppDragImage.cs" />
-    <Compile Include="UI\Helpers\AppDragOverlay.cs" />
+    <Compile Include="UI\Helpers\AppDragVisualSettings.cs" />
     <Compile Include="UI\Helpers\AppDragFlyoutHint.cs" />
     <Compile Include="UI\Helpers\Branding.cs" />
     <Compile Include="UI\Helpers\DevTrace.cs" />

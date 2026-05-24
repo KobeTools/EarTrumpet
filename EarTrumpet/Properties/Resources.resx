@@ -659,6 +659,18 @@ Open [https://eartrumpet.app/jmp/fixfonts] now?</value>
   <data name="SettingsUseGlobalMouseWheelHook" xml:space="preserve">
     <value>Use the scroll wheel to change volume while the flyout is open</value>
   </data>
+  <data name="DragDropSettingsPageText" xml:space="preserve">
+    <value>Drag and drop</value>
+  </data>
+  <data name="SettingsAppDragVisualDescription" xml:space="preserve">
+    <value>Controls the glow around app icons while you drag them between output devices. Set to 0 to disable.</value>
+  </data>
+  <data name="SettingsAppDragVisualIntensityValue" xml:space="preserve">
+    <value>Intensity: {0}</value>
+  </data>
+  <data name="SettingsAppDragVisualHint" xml:space="preserve">
+    <value>Drag an app icon onto another device to move its audio. Low values are subtle; higher values add a stronger halo.</value>
+  </data>
   <data name="CommunitySettingsPageText" xml:space="preserve">
     <value>Community settings</value>
   </data>

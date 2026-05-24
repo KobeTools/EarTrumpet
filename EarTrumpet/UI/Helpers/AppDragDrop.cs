@@ -18,26 +18,6 @@ namespace EarTrumpet.UI.Helpers
         public static bool CanDrag(IAppItemViewModel app) =>
             app != null && app.IsMovable && !app.IsExpanded;
 
-        public static string DescribeDragBlockReason(IAppItemViewModel app)
-        {
-            if (app == null)
-            {
-                return "no app";
-            }
-
-            if (!app.IsMovable)
-            {
-                return $"{app.DisplayName} is not movable (system sounds or OS < RS4)";
-            }
-
-            if (app.IsExpanded)
-            {
-                return $"{app.DisplayName} is a child session row";
-            }
-
-            return null;
-        }
-
         public static bool TryGetDragInfo(IDataObject data, out AppDragInfo info)
         {
             info = data?.GetData(Format) as AppDragInfo;
@@ -70,37 +50,6 @@ namespace EarTrumpet.UI.Helpers
             }
 
             return true;
-        }
-
-        public static string DescribeDropRejectReason(IAppItemViewModel app, DeviceViewModel targetDevice, bool overDeviceSection, string listDeviceId = null)
-        {
-            if (app == null)
-            {
-                return "no app in drag payload";
-            }
-
-            if (!overDeviceSection)
-            {
-                return "not over a device section (try the device header or app list area)";
-            }
-
-            if (targetDevice == null)
-            {
-                return "over device UI but no DeviceViewModel";
-            }
-
-            if (!CanDrag(app))
-            {
-                return DescribeDragBlockReason(app);
-            }
-
-            var sourceId = listDeviceId ?? app.Parent?.Id;
-            if (!string.IsNullOrEmpty(sourceId) && sourceId == targetDevice.Id)
-            {
-                return $"already listed under '{targetDevice.DisplayName}' (source id {sourceId})";
-            }
-
-            return "unknown";
         }
     }
 }

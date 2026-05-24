@@ -150,9 +150,6 @@ namespace EarTrumpet.UI.ViewModels
         {
             try
             {
-                DevTrace.Write($"MoveAppToDevice begin: {app?.DisplayName} AppId={app?.AppId} Pid={app?.ProcessId} -> {dev?.DisplayName ?? "(default)"} Id={dev?.Id}");
-
-                // Collect all matching apps on all devices.
                 var apps = new List<IAppItemViewModel>();
                 apps.Add(app);
 
@@ -171,16 +168,12 @@ namespace EarTrumpet.UI.ViewModels
                     }
                 }
 
-                DevTrace.Write($"MoveAppToDevice grouped {apps.Count} session row(s)");
-
                 foreach (var foundApp in apps)
                 {
                     MoveAppToDeviceInternal(foundApp, dev);
                 }
 
-                // Collect and move any hidden/moved sessions.
                 ((IAudioDeviceManagerWindowsAudio)_deviceManager).MoveHiddenAppsToDevice(app.AppId, dev?.Id);
-                DevTrace.Write($"MoveAppToDevice complete: {app?.DisplayName}");
             }
             catch (Exception ex)
             {
@@ -201,14 +194,12 @@ namespace EarTrumpet.UI.ViewModels
                 var oldDevice = AllDevices.FirstOrDefault(d => d.Apps.Contains(app));
                 if (oldDevice == null)
                 {
-                    DevTrace.Write($"MoveAppToDeviceInternal: {app.DisplayName} not found on any device list");
                     return;
                 }
 
                 var newDevice = AllDevices.FirstOrDefault(d => searchId == d.Id);
                 if (newDevice == null)
                 {
-                    DevTrace.Write($"MoveAppToDeviceInternal: target device id '{searchId}' not found");
                     return;
                 }
 

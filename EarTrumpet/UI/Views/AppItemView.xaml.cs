@@ -49,19 +49,12 @@ namespace EarTrumpet.UI.Views
 
             if (!TryGetApp(out var app) || !AppDragDrop.CanDrag(app))
             {
-                if (TryGetApp(out app))
-                {
-                    DevTrace.Write($"Drag blocked: {AppDragDrop.DescribeDragBlockReason(app)}");
-                }
-
                 return;
             }
 
             _dragStartPoint = e.GetPosition(this);
             _dragStartInIcon = e.GetPosition(IconDragSource);
             _isDragInProgress = false;
-            var listDeviceId = this.FindVisualParent<DeviceView>()?.Device?.Id;
-            DevTrace.Write($"Drag armed: {app.DisplayName} listed under {listDeviceId} (parent {app.Parent?.Id})");
         }
 
         private void OnPreviewMouseMove(object sender, MouseEventArgs e)
@@ -93,19 +86,22 @@ namespace EarTrumpet.UI.Views
                 ListDeviceId = listDevice?.Id,
             };
 
-            DevTrace.Write($"Drag start: {app.DisplayName} listed under {dragInfo.ListDeviceId} (parent {app.Parent?.Id})");
             var hotspot = _dragStartInIcon ?? new Point(IconDragSource.ActualWidth / 2, IconDragSource.ActualHeight / 2);
             var window = Window.GetWindow(this);
+            var intensity = AppDragVisualSettings.GetIntensity();
             var iconOpacity = IconDragSource.Opacity;
-            IconDragSource.Opacity = 0.35;
+            if (intensity > 0)
+            {
+                AppDragVisualSettings.GetVisualParameters(intensity, out _, out _, out _, out _, out var sourceIconOpacity);
+                IconDragSource.Opacity = sourceIconOpacity;
+            }
             try
             {
                 var data = new DataObject(AppDragDrop.Format, dragInfo);
-                using (var hint = AppDragFlyoutHint.TryStart(window, IconDragSource, hotspot))
+                var shellApplied = AppDragImage.TryApplyShell(data, IconDragSource, hotspot);
+                using (shellApplied ? null : AppDragFlyoutHint.TryStart(window, IconDragSource, hotspot))
                 {
-                    AppDragImage.TryApplyShell(data, IconDragSource, hotspot);
-                    var effect = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
-                    DevTrace.Write($"Drag end: {app.DisplayName} effect={effect}");
+                    DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
                 }
             }
             catch (Exception ex)
@@ -123,11 +119,6 @@ namespace EarTrumpet.UI.Views
 
         private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_dragStartPoint != null && TryGetApp(out var app))
-            {
-                DevTrace.Write($"Drag cancelled (no threshold): {app.DisplayName}");
-            }
-
             _dragStartPoint = null;
             _dragStartInIcon = null;
             _isDragInProgress = false;
