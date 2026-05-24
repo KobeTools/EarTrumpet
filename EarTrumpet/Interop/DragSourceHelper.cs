@@ -52,9 +52,8 @@ namespace EarTrumpet.Interop
                 helper.InitializeFromBitmap(ref dragImage, dataObject);
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Trace.WriteLine($"DragSourceHelper.TrySetBitmapDragImage {ex}");
                 return false;
             }
             finally
@@ -77,9 +76,8 @@ namespace EarTrumpet.Interop
                 helper.InitializeFromWindow(hwnd, ref origin, dataObject);
                 return true;
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Trace.WriteLine($"DragSourceHelper.TrySetWindowDragImage {ex}");
                 return false;
             }
         }

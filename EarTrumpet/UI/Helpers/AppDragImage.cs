@@ -73,18 +73,48 @@ namespace EarTrumpet.UI.Helpers
             var intensity = AppDragVisualSettings.GetIntensity();
             var icon = TryGetIconBitmap(iconRoot);
             var comData = (ComIDataObject)data;
+            var display = GetDisplaySize(iconRoot);
 
             if (icon != null)
             {
-                var display = GetDisplaySize(iconRoot);
-                var dragBitmap = CreateDragImageBitmap(iconRoot, icon, display, intensity, dragHotspotInIcon, out var hotspotX, out var hotspotY);
-                if (dragBitmap != null && TryApplyShellFromBitmap(dragBitmap, hotspotX, hotspotY, comData))
+                BitmapSource dragBitmap;
+                int hotspotX;
+                int hotspotY;
+
+                if (intensity > 0)
+                {
+                    dragBitmap = CreateDragImageBitmap(iconRoot, icon, display, intensity, dragHotspotInIcon, out hotspotX, out hotspotY);
+                }
+                else
+                {
+                    dragBitmap = icon;
+                    var scaleX = dragBitmap.PixelWidth / Math.Max(1, display.Width);
+                    var scaleY = dragBitmap.PixelHeight / Math.Max(1, display.Height);
+                    hotspotX = (int)Math.Round(Clamp(dragHotspotInIcon.X * scaleX, 0, dragBitmap.PixelWidth - 1), MidpointRounding.AwayFromZero);
+                    hotspotY = (int)Math.Round(Clamp(dragHotspotInIcon.Y * scaleY, 0, dragBitmap.PixelHeight - 1), MidpointRounding.AwayFromZero);
+                }
+
+                if (dragBitmap != null && TrySetShellBitmap(data, dragBitmap, hotspotX, hotspotY, comData))
                 {
                     return true;
                 }
             }
 
             return TryApplyShellFromWindow(iconRoot, dragHotspotInIcon, comData);
+        }
+
+        private static bool TrySetShellBitmap(DataObject data, BitmapSource dragBitmap, int hotspotX, int hotspotY, ComIDataObject comData)
+        {
+            try
+            {
+                data.SetData(DataFormats.Bitmap, dragBitmap);
+            }
+            catch
+            {
+                // Optional; shell image is the important path.
+            }
+
+            return TryApplyShellFromBitmap(dragBitmap, hotspotX, hotspotY, comData);
         }
 
         public static BitmapSource CreateDragImageBitmap(
@@ -302,16 +332,27 @@ namespace EarTrumpet.UI.Helpers
 
         private static IntPtr CreateHBitmap(BitmapSource source)
         {
-            var converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+            BitmapSource converted = source;
+            if (source.Format != PixelFormats.Bgra32)
+            {
+                converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+            }
+
             var width = converted.PixelWidth;
             var height = converted.PixelHeight;
             var stride = width * 4;
             var pixels = new byte[height * stride];
             converted.CopyPixels(pixels, stride, 0);
 
-            using (var bitmap = new DrawingBitmap(width, height, DrawingPixelFormat.Format32bppPArgb))
+            // WPF uses premultiplied BGRA; GDI drag images need straight alpha in 32bpp ARGB.
+            UnpremultiplyBgra(pixels);
+
+            using (var bitmap = new DrawingBitmap(width, height, DrawingPixelFormat.Format32bppArgb))
             {
-                var locked = bitmap.LockBits(new DrawingRectangle(0, 0, width, height), DrawingImageLockMode.WriteOnly, DrawingPixelFormat.Format32bppPArgb);
+                var locked = bitmap.LockBits(
+                    new DrawingRectangle(0, 0, width, height),
+                    DrawingImageLockMode.WriteOnly,
+                    DrawingPixelFormat.Format32bppArgb);
                 try
                 {
                     Marshal.Copy(pixels, 0, locked.Scan0, pixels.Length);
@@ -321,7 +362,32 @@ namespace EarTrumpet.UI.Helpers
                     bitmap.UnlockBits(locked);
                 }
 
-                return bitmap.GetHbitmap(DrawingColor.FromArgb(0, 0, 0, 0));
+                return bitmap.GetHbitmap(DrawingColor.Transparent);
+            }
+        }
+
+        private static void UnpremultiplyBgra(byte[] pixels)
+        {
+            for (var i = 0; i < pixels.Length; i += 4)
+            {
+                var alpha = pixels[i + 3];
+                if (alpha == 0)
+                {
+                    pixels[i] = 0;
+                    pixels[i + 1] = 0;
+                    pixels[i + 2] = 0;
+                    continue;
+                }
+
+                if (alpha == 255)
+                {
+                    continue;
+                }
+
+                var scale = 255f / alpha;
+                pixels[i] = (byte)Math.Min(255, pixels[i] * scale);
+                pixels[i + 1] = (byte)Math.Min(255, pixels[i + 1] * scale);
+                pixels[i + 2] = (byte)Math.Min(255, pixels[i + 2] * scale);
             }
         }
 

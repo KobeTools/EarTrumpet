@@ -172,8 +172,9 @@
             </StackPanel>
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:EarTrumpetDragSettingsPageViewModel}">
-            <StackPanel Margin="0,0,24,12"
-                        MaxWidth="480"
+            <StackPanel Margin="24,0,24,24"
+                        MaxWidth="420"
+                        HorizontalAlignment="Left"
                         Orientation="Vertical">
                 <TextBlock Style="{StaticResource BodySubText}"
                            Text="{x:Static resx:Resources.SettingsAppDragVisualDescription}"
@@ -181,11 +182,9 @@
                 <TextBlock Margin="0,20,0,8"
                            Style="{StaticResource BodyText}"
                            Text="{Binding IntensityLabel}" />
-                <Slider HorizontalAlignment="Stretch"
-                        IsSnapToTickEnabled="True"
+                <Slider Margin="0,0,4,0"
                         Maximum="100"
                         Minimum="0"
-                        TickFrequency="5"
                         Value="{Binding AppDragVisualIntensity, Mode=TwoWay}" />
                 <TextBlock Margin="0,12,0,0"
                            Style="{StaticResource BodySubText}"

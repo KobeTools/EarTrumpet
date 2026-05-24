@@ -331,7 +331,6 @@
     <Compile Include="UI\Helpers\AppDragVisualSettings.cs" />
     <Compile Include="UI\Helpers\AppDragFlyoutHint.cs" />
     <Compile Include="UI\Helpers\Branding.cs" />
-    <Compile Include="UI\Helpers\DevTrace.cs" />
     <Compile Include="UI\ViewModels\ToolbarItemViewModel.cs" />
     <Compile Include="Interop\Helpers\AccentPolicyLibrary.cs" />
     <Compile Include="DataModel\WindowsAudio\Internal\AudioPolicyConfigService.cs" />

@@ -54,35 +54,28 @@ namespace EarTrumpet.UI.Helpers
                 return;
             }
 
-            try
+            if (!AppDragDrop.TryGetDragInfo(e.Data, out var dragInfo))
             {
-                if (!AppDragDrop.TryGetDragInfo(e.Data, out var dragInfo))
-                {
-                    return;
-                }
-
-                var app = dragInfo.App;
-                var deviceView = FindDeviceView(root, e.GetPosition(root));
-                var device = deviceView?.Device;
-                if (device == null || !AppDragDrop.CanDrop(app, device, dragInfo.ListDeviceId))
-                {
-                    return;
-                }
-
-                var host = getHost();
-                if (host == null)
-                {
-                    return;
-                }
-
-                host.MoveAppToDevice(app, device);
-                e.Effects = DragDropEffects.Move;
-                e.Handled = true;
+                return;
             }
-            catch (Exception ex)
+
+            var app = dragInfo.App;
+            var deviceView = FindDeviceView(root, e.GetPosition(root));
+            var device = deviceView?.Device;
+            if (device == null || !AppDragDrop.CanDrop(app, device, dragInfo.ListDeviceId))
             {
-                DevTrace.LogException("Flyout drop", ex);
+                return;
             }
+
+            var host = getHost();
+            if (host == null)
+            {
+                return;
+            }
+
+            host.MoveAppToDevice(app, device);
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
         }
 
         private static DeviceView FindDeviceView(FrameworkElement root, Point position)

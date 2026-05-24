@@ -2,6 +2,7 @@
 using EarTrumpet.UI.Helpers;
 using EarTrumpet.UI.ViewModels;
 using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -95,6 +96,7 @@ namespace EarTrumpet.UI.Views
                 AppDragVisualSettings.GetVisualParameters(intensity, out _, out _, out _, out _, out var sourceIconOpacity);
                 IconDragSource.Opacity = sourceIconOpacity;
             }
+            GiveFeedback += OnGiveFeedback;
             try
             {
                 var data = new DataObject(AppDragDrop.Format, dragInfo);
@@ -106,15 +108,22 @@ namespace EarTrumpet.UI.Views
             }
             catch (Exception ex)
             {
-                DevTrace.LogException($"DragDrop {app?.DisplayName}", ex);
+                Trace.WriteLine($"AppItemView DragDrop Failed: {ex}");
             }
             finally
             {
+                GiveFeedback -= OnGiveFeedback;
                 IconDragSource.Opacity = iconOpacity;
                 _dragStartInIcon = null;
                 _isDragInProgress = false;
                 AppDragDropFlyout.EndDrag();
             }
+        }
+
+        private void OnGiveFeedback(object sender, GiveFeedbackEventArgs e)
+        {
+            e.UseDefaultCursors = false;
+            e.Handled = true;
         }
 
         private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)

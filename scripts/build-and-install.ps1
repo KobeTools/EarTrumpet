@@ -1,12 +1,12 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds EarTrumpet Dev and installs it to a local folder, then starts it.
+    Builds EarTrumpet Dev and installs it locally with Start menu integration.
 
 .DESCRIPTION
     Restores NuGet packages, builds EarTrumpet (x86 Debug with DEVBUILD), copies output to
-    %LOCALAPPDATA%\Programs\EarTrumpet-Dev as EarTrumpetDev.exe, and starts it.
-    Uses a separate single-instance mutex so it can run beside the Microsoft Store app.
+    %LOCALAPPDATA%\Programs\EarTrumpet-Dev as EarTrumpetDev.exe, registers a Start menu shortcut,
+    and starts the app. Uses a separate single-instance mutex so it can run beside the Store app.
 
 .PARAMETER Configuration
     MSBuild configuration (Debug or Release). Default: Debug.
@@ -17,9 +17,14 @@
 .PARAMETER SkipLaunch
     Install only; do not start EarTrumpet after copying files.
 
+.PARAMETER SkipShortcuts
+    Do not create or update Start menu / optional startup shortcuts.
+
+.PARAMETER Startup
+    Also register EarTrumpet Dev to run at sign-in (Startup folder; shows in Settings > Apps > Startup).
+
 .PARAMETER InstallPrerequisites
     Only if build fails: install missing .NET 4.6.2 targeting pack or Windows SDK via winget.
-    Visual Studio often installs these already; the script checks before installing anything.
 #>
 [CmdletBinding()]
 param(
@@ -30,11 +35,16 @@ param(
 
     [switch] $SkipLaunch,
 
+    [switch] $SkipShortcuts,
+
+    [switch] $Startup,
+
     [switch] $InstallPrerequisites
 )
 
 $ErrorActionPreference = 'Stop'
 
+$appName = 'EarTrumpet Dev'
 $devExeName = 'EarTrumpetDev.exe'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $projectPath = Join-Path $repoRoot 'EarTrumpet\EarTrumpet.csproj'
@@ -150,6 +160,45 @@ function Stop-DevInstance([string] $InstallDirectory) {
     Start-Sleep -Milliseconds 500
 }
 
+function New-Shortcut([string] $LinkPath, [string] $TargetPath, [string] $WorkingDirectory, [string] $Description) {
+    $parent = Split-Path $LinkPath -Parent
+    if (-not (Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+
+    if (Test-Path $LinkPath) {
+        Remove-Item $LinkPath -Force
+    }
+
+    $shell = New-Object -ComObject WScript.Shell
+    $shortcut = $shell.CreateShortcut($LinkPath)
+    $shortcut.TargetPath = $TargetPath
+    $shortcut.WorkingDirectory = $WorkingDirectory
+    $shortcut.Description = $Description
+    $shortcut.Save()
+}
+
+function Register-DevShortcuts([string] $InstallDirectory, [string] $ExePath, [switch] $AddStartup) {
+    $programsDir = [Environment]::GetFolderPath('Programs')
+    $startMenuLink = Join-Path $programsDir "$appName.lnk"
+    New-Shortcut -LinkPath $startMenuLink -TargetPath $ExePath -WorkingDirectory $InstallDirectory `
+        -Description 'EarTrumpet Dev — per-app and per-device volume control'
+    Write-Host "Start menu: $startMenuLink" -ForegroundColor Green
+
+    $startupDir = [Environment]::GetFolderPath('Startup')
+    $startupLink = Join-Path $startupDir "$appName.lnk"
+
+    if ($AddStartup) {
+        New-Shortcut -LinkPath $startupLink -TargetPath $ExePath -WorkingDirectory $InstallDirectory `
+            -Description 'EarTrumpet Dev — run at sign-in'
+        Write-Host "Startup (run at sign-in): $startupLink" -ForegroundColor Green
+    }
+    elseif (Test-Path $startupLink) {
+        Remove-Item $startupLink -Force
+        Write-Host 'Removed startup shortcut (re-run with -Startup to enable).' -ForegroundColor Yellow
+    }
+}
+
 Write-Step "Repository: $repoRoot"
 
 Ensure-BuildPrerequisites
@@ -180,22 +229,31 @@ Stop-DevInstance -InstallDirectory $InstallDir
 
 Copy-Item -Path (Join-Path $buildOutput '*') -Destination $InstallDir -Recurse -Force
 
-# Run as EarTrumpetDev.exe so Task Manager shows the dev build clearly and the mutex stays separate from Store EarTrumpet.
 if (Test-Path $targetExe) {
     Remove-Item $targetExe -Force
 }
 
-Rename-Item -Path (Join-Path $installDir 'EarTrumpet.exe') -NewName $devExeName
+Rename-Item -Path (Join-Path $InstallDir 'EarTrumpet.exe') -NewName $devExeName
+
+$legacyLog = Join-Path $InstallDir 'eartrumpet-dev.log'
+if (Test-Path $legacyLog) {
+    Remove-Item $legacyLog -Force -ErrorAction SilentlyContinue
+}
 
 Write-Host "Installed: $targetExe" -ForegroundColor Green
 Write-Host "Tray tooltip prefix: EarTrumpet Dev:" -ForegroundColor Green
+
+if (-not $SkipShortcuts) {
+    Write-Step 'Registering shortcuts'
+    Register-DevShortcuts -InstallDirectory $InstallDir -ExePath $targetExe -AddStartup:$Startup
+}
 
 if (-not $SkipLaunch) {
     Write-Step 'Starting EarTrumpet Dev'
     Start-Process -FilePath $targetExe
 }
 
-Write-Host "`nDone. Rebuild and reinstall:" -ForegroundColor Yellow
-Write-Host "  .\scripts\build-and-install.ps1" -ForegroundColor Yellow
-Write-Host "Run with live logs:" -ForegroundColor Yellow
-Write-Host "  .\scripts\run-dev-with-logs.ps1" -ForegroundColor Yellow
+Write-Host "`nDone." -ForegroundColor Yellow
+Write-Host "  Rebuild:  .\scripts\build-and-install.ps1" -ForegroundColor Yellow
+Write-Host "  Startup:  .\scripts\build-and-install.ps1 -Startup" -ForegroundColor Yellow
+Write-Host "  Open app: Start > EarTrumpet Dev" -ForegroundColor Yellow

@@ -148,37 +148,30 @@ namespace EarTrumpet.UI.ViewModels
 
         public void MoveAppToDevice(IAppItemViewModel app, DeviceViewModel dev)
         {
-            try
-            {
-                var apps = new List<IAppItemViewModel>();
-                apps.Add(app);
+            var apps = new List<IAppItemViewModel>();
+            apps.Add(app);
 
-                foreach (var device in AllDevices)
+            foreach (var device in AllDevices)
+            {
+                foreach (var deviceApp in device.Apps)
                 {
-                    foreach (var deviceApp in device.Apps)
+                    if (deviceApp.DoesGroupWith(app))
                     {
-                        if (deviceApp.DoesGroupWith(app))
+                        if (!apps.Contains(deviceApp))
                         {
-                            if (!apps.Contains(deviceApp))
-                            {
-                                apps.Add(deviceApp);
-                                break;
-                            }
+                            apps.Add(deviceApp);
+                            break;
                         }
                     }
                 }
-
-                foreach (var foundApp in apps)
-                {
-                    MoveAppToDeviceInternal(foundApp, dev);
-                }
-
-                ((IAudioDeviceManagerWindowsAudio)_deviceManager).MoveHiddenAppsToDevice(app.AppId, dev?.Id);
             }
-            catch (Exception ex)
+
+            foreach (var foundApp in apps)
             {
-                DevTrace.LogException($"MoveAppToDevice failed for {app?.DisplayName}", ex);
+                MoveAppToDeviceInternal(foundApp, dev);
             }
+
+            ((IAudioDeviceManagerWindowsAudio)_deviceManager).MoveHiddenAppsToDevice(app.AppId, dev?.Id);
         }
 
         private void MoveAppToDeviceInternal(IAppItemViewModel app, DeviceViewModel device)
@@ -218,7 +211,7 @@ namespace EarTrumpet.UI.ViewModels
             }
             catch (Exception ex)
             {
-                DevTrace.LogException($"MoveAppToDeviceInternal {app?.DisplayName}", ex);
+                Trace.WriteLine($"DeviceCollectionViewModel MoveAppToDeviceInternal Failed: {ex}");
             }
         }
 

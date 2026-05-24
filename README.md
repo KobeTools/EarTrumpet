@@ -67,7 +67,7 @@ Or via command line using either
 
 Want to see what we were working on? Or help us test new features? [Install EarTrumpet from the dev channel.](https://install.eartrumpet.app/dev/EarTrumpet.Package.appinstaller) New builds are released automatically every time we commit to the `dev` branch, keeping you up to date on our progress.
 
-## Local build and reinstall (fork)
+## Local build and install (fork)
 
 From the repository root in PowerShell:
 
@@ -75,25 +75,19 @@ From the repository root in PowerShell:
 .\scripts\build-and-install.ps1
 ```
 
-This builds **EarTrumpet Dev** (`EarTrumpetDev.exe`) and installs it to `%LOCALAPPDATA%\Programs\EarTrumpet-Dev`. It uses its own tray mutex so it can run **at the same time** as the Microsoft Store EarTrumpet. Hover the tray icon and confirm the tooltip starts with **EarTrumpet Dev:** (not plain `EarTrumpet:`).
+This builds **EarTrumpet Dev** (`EarTrumpetDev.exe`), installs it to `%LOCALAPPDATA%\Programs\EarTrumpet-Dev`, and adds **EarTrumpet Dev** to the Start menu. It uses its own tray mutex so it can run **at the same time** as the Microsoft Store EarTrumpet. Hover the tray icon and confirm the tooltip starts with **EarTrumpet Dev:**.
 
-To rebuild and watch drag-and-drop debug logs in the terminal:
-
-```powershell
-.\scripts\run-dev-with-logs.ps1 -Rebuild
-```
-
-Or, with EarTrumpet Dev already running, tail the log in another PowerShell window:
+Run at sign-in (shows in **Settings → Apps → Startup**):
 
 ```powershell
-Get-Content "$env:LOCALAPPDATA\Programs\EarTrumpet-Dev\eartrumpet-dev.log" -Wait -Tail 30
+.\scripts\build-and-install.ps1 -Startup
 ```
 
-Use `-Configuration Release` for a release build or `-SkipLaunch` to install without starting the app.
+Other options: `-Configuration Release`, `-SkipLaunch` (install only), `-SkipShortcuts` (files only, no Start menu entry).
 
-**Build prerequisites:** Visual Studio (or Build Tools) with MSBuild is enough on most machines. The script only checks for the [.NET Framework 4.6.2 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net462) reference assemblies and `Windows.winmd` (Windows SDK). Those are not always installed with VS even when you can open the solution—use `-InstallPrerequisites` only if the build reports they are missing. See [Compiling EarTrumpet](./COMPILING.md) for full setup details.
+**Build prerequisites:** Visual Studio (or Build Tools) with MSBuild is enough on most machines. The script checks for the [.NET Framework 4.6.2 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net462) reference assemblies and `Windows.winmd` (Windows SDK). Use `-InstallPrerequisites` only if the build reports they are missing. See [Compiling EarTrumpet](./COMPILING.md).
 
-**Trying drag between devices:** Expand the flyout (chevron at the top) so multiple output devices are visible, then drag an **app icon** (not the volume slider) onto another device section.
+**Drag between devices:** Expand the flyout so multiple output devices are visible, then drag an **app icon** onto another device section. Adjust glow in **Settings → Drag and drop**.
 
 ## Documentation
 * [Technical Information](./EarTrumpet/README.md)

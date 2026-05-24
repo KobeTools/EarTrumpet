@@ -1,6 +1,7 @@
 ﻿using EarTrumpet.UI.Helpers;
 using EarTrumpet.UI.ViewModels;
 using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -109,7 +110,7 @@ namespace EarTrumpet.UI.Views
             }
             catch (Exception ex)
             {
-                DevTrace.LogException($"Drop on {Device.DisplayName}", ex);
+                Trace.WriteLine($"DeviceView Drop Failed: {ex}");
             }
         }
 

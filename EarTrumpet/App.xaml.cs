@@ -44,7 +44,6 @@ namespace EarTrumpet
 
         private void OnAppStartup(object sender, StartupEventArgs e)
         {
-            DevTrace.Initialize();
             RenderOptions.ProcessRenderMode = RenderMode.SoftwareOnly;
 
             Exit += (_, __) => IsShuttingDown = true;
@@ -72,12 +71,10 @@ namespace EarTrumpet
             }
             else
             {
-                DevTrace.Write("Startup aborted: another instance is already running (check for Microsoft Store EarTrumpet or a second dev build).");
 #if DEVBUILD
                 MessageBox.Show(
-                    $"{Branding.AppDisplayName} is already running, or could not acquire its single-instance lock.\n\n" +
-                    $"Install and run {Branding.ExecutableFileName} from %LOCALAPPDATA%\\Programs\\EarTrumpet-Dev so it can run beside the Store app.\n\n" +
-                    $"Log: {DevTrace.LogFilePath}",
+                    $"{Branding.AppDisplayName} is already running.\n\n" +
+                    $"Close the other instance, or run {Branding.ExecutableFileName} from %LOCALAPPDATA%\\Programs\\EarTrumpet-Dev.",
                     Branding.AppDisplayName,
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
@@ -88,16 +85,6 @@ namespace EarTrumpet
 
         private void ContinueStartup()
         {
-#if DEVBUILD
-            if (Application.Current != null)
-            {
-                Application.Current.DispatcherUnhandledException += (_, e) =>
-                {
-                    DevTrace.LogException("Dispatcher unhandled (ContinueStartup)", e.Exception);
-                    e.Handled = true;
-                };
-            }
-#endif
             ((UI.Themes.Manager)Resources["ThemeManager"]).Load();
 
             var deviceManager = WindowsAudioFactory.Create(AudioDeviceKind.Playback);
