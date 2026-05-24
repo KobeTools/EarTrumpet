@@ -1,12 +1,12 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds EarTrumpet and installs it to a local dev folder, then starts it.
+    Builds EarTrumpet Dev and installs it to a local folder, then starts it.
 
 .DESCRIPTION
-    Restores NuGet packages, builds EarTrumpet (x86), copies output to
-    %LOCALAPPDATA%\Programs\EarTrumpet-Dev, stops any running instance from
-    that folder, and launches the new build.
+    Restores NuGet packages, builds EarTrumpet (x86 Debug with DEVBUILD), copies output to
+    %LOCALAPPDATA%\Programs\EarTrumpet-Dev as EarTrumpetDev.exe, and starts it.
+    Uses a separate single-instance mutex so it can run beside the Microsoft Store app.
 
 .PARAMETER Configuration
     MSBuild configuration (Debug or Release). Default: Debug.
@@ -18,7 +18,8 @@
     Install only; do not start EarTrumpet after copying files.
 
 .PARAMETER InstallPrerequisites
-    Install missing build prerequisites (.NET 4.6.2 Developer Pack, Windows 10 SDK) via winget.
+    Only if build fails: install missing .NET 4.6.2 targeting pack or Windows SDK via winget.
+    Visual Studio often installs these already; the script checks before installing anything.
 #>
 [CmdletBinding()]
 param(
@@ -34,6 +35,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$devExeName = 'EarTrumpetDev.exe'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 $projectPath = Join-Path $repoRoot 'EarTrumpet\EarTrumpet.csproj'
 $packagesConfig = Join-Path $repoRoot 'EarTrumpet\packages.config'
@@ -113,7 +115,8 @@ function Ensure-BuildPrerequisites {
 Missing build prerequisites:
 $($missing -join [Environment]::NewLine)
 
-Re-run with -InstallPrerequisites to install them automatically, or see COMPILING.md.
+Visual Studio may be installed without the .NET 4.6.2 targeting pack or Windows SDK union metadata.
+Re-run with -InstallPrerequisites to install them, or add those workloads in the Visual Studio Installer.
 "@
     }
 }
@@ -128,19 +131,23 @@ function Ensure-NuGet {
     Invoke-WebRequest -Uri 'https://dist.nuget.org/win-x86-commandline/latest/nuget.exe' -OutFile $nugetExe
 }
 
-function Stop-InstalledInstance([string] $ExePath) {
-    $processes = Get-Process -Name 'EarTrumpet' -ErrorAction SilentlyContinue
-    foreach ($process in $processes) {
-        try {
-            if ($process.Path -and ($process.Path -eq $ExePath)) {
-                Write-Host "Stopping EarTrumpet (PID $($process.Id))"
-                Stop-Process -Id $process.Id -Force
+function Stop-DevInstance([string] $InstallDirectory) {
+    foreach ($name in @('EarTrumpetDev', 'EarTrumpet')) {
+        $processes = Get-Process -Name $name -ErrorAction SilentlyContinue
+        foreach ($process in $processes) {
+            try {
+                if ($process.Path -and $process.Path.StartsWith($InstallDirectory, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    Write-Host "Stopping $($process.ProcessName) (PID $($process.Id))"
+                    Stop-Process -Id $process.Id -Force
+                }
+            }
+            catch {
+                # Process may have exited while enumerating.
             }
         }
-        catch {
-            # Process may have exited while enumerating.
-        }
     }
+
+    Start-Sleep -Milliseconds 500
 }
 
 Write-Step "Repository: $repoRoot"
@@ -160,24 +167,35 @@ Write-Step "Building $Configuration|x86 with $msbuild"
     /v:minimal `
     /nologo
 
-if (-not (Test-Path (Join-Path $buildOutput 'EarTrumpet.exe'))) {
-    throw "Build failed: $(Join-Path $buildOutput 'EarTrumpet.exe') was not created."
+$builtExe = Join-Path $buildOutput 'EarTrumpet.exe'
+if (-not (Test-Path $builtExe)) {
+    throw "Build failed: $builtExe was not created."
 }
 
 Write-Step "Installing to $InstallDir"
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
-$targetExe = Join-Path $InstallDir 'EarTrumpet.exe'
-Stop-InstalledInstance -ExePath $targetExe
+$targetExe = Join-Path $InstallDir $devExeName
+Stop-DevInstance -InstallDirectory $InstallDir
 
 Copy-Item -Path (Join-Path $buildOutput '*') -Destination $InstallDir -Recurse -Force
 
+# Run as EarTrumpetDev.exe so Task Manager shows the dev build clearly and the mutex stays separate from Store EarTrumpet.
+if (Test-Path $targetExe) {
+    Remove-Item $targetExe -Force
+}
+
+Rename-Item -Path (Join-Path $installDir 'EarTrumpet.exe') -NewName $devExeName
+
 Write-Host "Installed: $targetExe" -ForegroundColor Green
+Write-Host "Tray tooltip prefix: EarTrumpet Dev:" -ForegroundColor Green
 
 if (-not $SkipLaunch) {
-    Write-Step 'Starting EarTrumpet'
+    Write-Step 'Starting EarTrumpet Dev'
     Start-Process -FilePath $targetExe
 }
 
-Write-Host "`nDone. To rebuild and reinstall, run:" -ForegroundColor Yellow
+Write-Host "`nDone. Rebuild and reinstall:" -ForegroundColor Yellow
 Write-Host "  .\scripts\build-and-install.ps1" -ForegroundColor Yellow
+Write-Host "Run with live logs:" -ForegroundColor Yellow
+Write-Host "  .\scripts\run-dev-with-logs.ps1" -ForegroundColor Yellow

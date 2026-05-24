@@ -148,6 +148,7 @@
                 </Style>
             </Border.Style>
             <ListView Name="AppList"
+                      AllowDrop="True"
                       Margin="{StaticResource VolumeAppListMargin}"
                       AutomationProperties.Name="{x:Static resx:Resources.AppsListAccessibleText}"
                       ItemsSource="{Binding Device.Apps, Mode=OneWay}" />

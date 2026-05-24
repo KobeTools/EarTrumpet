@@ -1,5 +1,5 @@
-﻿using System.Diagnostics;
-using System.Reflection;
+﻿using EarTrumpet.UI.Helpers;
+using System.Diagnostics;
 using System.Threading;
 
 namespace EarTrumpet.Interop.Helpers
@@ -10,8 +10,7 @@ namespace EarTrumpet.Interop.Helpers
 
         public static bool TakeExclusivity()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var mutexName = $"Local\\{assembly.GetName().Name}-0e510f7b-aed2-40b0-ad72-d2d3fdc89a02";
+            var mutexName = $"Local\\{Branding.MutexAppName}-0e510f7b-aed2-40b0-ad72-d2d3fdc89a02";
 
             s_mutex = new Mutex(true, mutexName, out bool mutexCreated);
             if (!mutexCreated)

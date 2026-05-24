@@ -1,6 +1,7 @@
 ﻿using EarTrumpet.DataModel.Audio;
 using EarTrumpet.DataModel.WindowsAudio;
 using EarTrumpet.Extensions;
+using EarTrumpet.UI.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -147,32 +148,44 @@ namespace EarTrumpet.UI.ViewModels
 
         public void MoveAppToDevice(IAppItemViewModel app, DeviceViewModel dev)
         {
-            // Collect all matching apps on all devices.
-            var apps = new List<IAppItemViewModel>();
-            apps.Add(app);
-
-            foreach (var device in AllDevices)
+            try
             {
-                foreach (var deviceApp in device.Apps)
+                DevTrace.Write($"MoveAppToDevice begin: {app?.DisplayName} AppId={app?.AppId} Pid={app?.ProcessId} -> {dev?.DisplayName ?? "(default)"} Id={dev?.Id}");
+
+                // Collect all matching apps on all devices.
+                var apps = new List<IAppItemViewModel>();
+                apps.Add(app);
+
+                foreach (var device in AllDevices)
                 {
-                    if (deviceApp.DoesGroupWith(app))
+                    foreach (var deviceApp in device.Apps)
                     {
-                        if (!apps.Contains(deviceApp))
+                        if (deviceApp.DoesGroupWith(app))
                         {
-                            apps.Add(deviceApp);
-                            break;
+                            if (!apps.Contains(deviceApp))
+                            {
+                                apps.Add(deviceApp);
+                                break;
+                            }
                         }
                     }
                 }
-            }
 
-            foreach (var foundApp in apps)
+                DevTrace.Write($"MoveAppToDevice grouped {apps.Count} session row(s)");
+
+                foreach (var foundApp in apps)
+                {
+                    MoveAppToDeviceInternal(foundApp, dev);
+                }
+
+                // Collect and move any hidden/moved sessions.
+                ((IAudioDeviceManagerWindowsAudio)_deviceManager).MoveHiddenAppsToDevice(app.AppId, dev?.Id);
+                DevTrace.Write($"MoveAppToDevice complete: {app?.DisplayName}");
+            }
+            catch (Exception ex)
             {
-                MoveAppToDeviceInternal(foundApp, dev);
+                DevTrace.LogException($"MoveAppToDevice failed for {app?.DisplayName}", ex);
             }
-
-            // Collect and move any hidden/moved sessions.
-            ((IAudioDeviceManagerWindowsAudio)_deviceManager).MoveHiddenAppsToDevice(app.AppId, dev?.Id);
         }
 
         private void MoveAppToDeviceInternal(IAppItemViewModel app, DeviceViewModel device)
@@ -185,8 +198,19 @@ namespace EarTrumpet.UI.ViewModels
 
             try
             {
-                DeviceViewModel oldDevice = AllDevices.First(d => d.Apps.Contains(app));
-                DeviceViewModel newDevice = AllDevices.First(d => searchId == d.Id);
+                var oldDevice = AllDevices.FirstOrDefault(d => d.Apps.Contains(app));
+                if (oldDevice == null)
+                {
+                    DevTrace.Write($"MoveAppToDeviceInternal: {app.DisplayName} not found on any device list");
+                    return;
+                }
+
+                var newDevice = AllDevices.FirstOrDefault(d => searchId == d.Id);
+                if (newDevice == null)
+                {
+                    DevTrace.Write($"MoveAppToDeviceInternal: target device id '{searchId}' not found");
+                    return;
+                }
 
                 bool isLogicallyMovingDevices = (oldDevice != newDevice);
 
@@ -203,7 +227,7 @@ namespace EarTrumpet.UI.ViewModels
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"DeviceCollectionViewModel MoveAppToDeviceInternal Failed: {ex}");
+                DevTrace.LogException($"MoveAppToDeviceInternal {app?.DisplayName}", ex);
             }
         }
 
@@ -241,7 +265,7 @@ namespace EarTrumpet.UI.ViewModels
             if (Default != null)
             {
                 var stateText = Default.IsMuted ? Properties.Resources.MutedText : $"{Default.Volume}%";
-                var prefixText = $"EarTrumpet: {stateText} - ";
+                var prefixText = $"{Branding.TrayPrefix}{stateText} - ";
                 var deviceName = $"{Default.DeviceDescription} ({Default.EnumeratorName})";
 
                 // Remote Audio devices may not contain an enumerator name or description.

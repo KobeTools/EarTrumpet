@@ -1,9 +1,11 @@
 ﻿using EarTrumpet.Extensions;
 using EarTrumpet.UI.Helpers;
 using EarTrumpet.UI.ViewModels;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace EarTrumpet.UI.Views
 {
@@ -12,18 +14,16 @@ namespace EarTrumpet.UI.Views
         private IAppItemViewModel App => (IAppItemViewModel)DataContext;
 
         private Point? _dragStartPoint;
-        private bool _dragStarted;
+        private bool _isDragInProgress;
 
         public AppItemView()
         {
             InitializeComponent();
 
             PreviewMouseRightButtonUp += (_, __) => OpenPopup();
-
-            IconDragSource.PreviewMouseLeftButtonDown += OnIconPreviewMouseLeftButtonDown;
-            IconDragSource.PreviewMouseMove += OnIconPreviewMouseMove;
-            IconDragSource.PreviewMouseLeftButtonUp += OnIconPreviewMouseLeftButtonUp;
-            IconDragSource.LostMouseCapture += (_, __) => _dragStartPoint = null;
+            PreviewMouseLeftButtonDown += OnPreviewMouseLeftButtonDown;
+            PreviewMouseMove += OnPreviewMouseMove;
+            PreviewMouseLeftButtonUp += OnPreviewMouseLeftButtonUp;
 
             Loaded += (_, __) =>
             {
@@ -35,28 +35,34 @@ namespace EarTrumpet.UI.Views
             };
         }
 
-        private void OnIconPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (e.ChangedButton != MouseButton.Left || !AppDragDrop.CanDrag(App))
+            if (e.ChangedButton != MouseButton.Left || !IsPointerOverIcon(e.OriginalSource as DependencyObject))
             {
+                return;
+            }
+
+            if (!AppDragDrop.CanDrag(App))
+            {
+                DevTrace.Write($"Drag blocked: {AppDragDrop.DescribeDragBlockReason(App)}");
                 return;
             }
 
             _dragStartPoint = e.GetPosition(this);
-            _dragStarted = false;
-            IconDragSource.CaptureMouse();
-            e.Handled = false;
+            _isDragInProgress = false;
+            DevTrace.Write($"Drag armed: {App.DisplayName}");
         }
 
-        private void OnIconPreviewMouseMove(object sender, MouseEventArgs e)
+        private void OnPreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton != MouseButtonState.Pressed || _dragStartPoint == null || !AppDragDrop.CanDrag(App))
+            if (_dragStartPoint == null || e.LeftButton != MouseButtonState.Pressed || _isDragInProgress)
             {
                 return;
             }
 
-            if (_dragStarted)
+            if (!AppDragDrop.CanDrag(App))
             {
+                _dragStartPoint = null;
                 return;
             }
 
@@ -66,23 +72,56 @@ namespace EarTrumpet.UI.Views
                 return;
             }
 
-            _dragStarted = true;
-            IconDragSource.ReleaseMouseCapture();
+            _isDragInProgress = true;
             _dragStartPoint = null;
 
-            var data = new DataObject(AppDragDrop.Format, App);
-            DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
-            _dragStarted = false;
+            DevTrace.Write($"Drag start: {App.DisplayName} (device {App.Parent?.Id})");
+            try
+            {
+                var data = new DataObject(AppDragDrop.Format, App);
+                var effect = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
+                DevTrace.Write($"Drag end: {App.DisplayName} effect={effect}");
+            }
+            catch (Exception ex)
+            {
+                DevTrace.LogException($"DragDrop {App?.DisplayName}", ex);
+            }
+            finally
+            {
+                _isDragInProgress = false;
+                AppDragDropFlyout.EndDrag();
+            }
         }
 
-        private void OnIconPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            _dragStartPoint = null;
-            _dragStarted = false;
-            if (IconDragSource.IsMouseCaptured)
+            if (_dragStartPoint != null)
             {
-                IconDragSource.ReleaseMouseCapture();
+                DevTrace.Write($"Drag cancelled (no threshold): {App?.DisplayName}");
             }
+
+            _dragStartPoint = null;
+            _isDragInProgress = false;
+        }
+
+        private static bool IsPointerOverIcon(DependencyObject source)
+        {
+            while (source != null)
+            {
+                if (source is Border border && border.Name == "IconDragSource")
+                {
+                    return true;
+                }
+
+                if (source is Grid grid && grid.Name == "IconCell")
+                {
+                    return true;
+                }
+
+                source = VisualTreeHelper.GetParent(source);
+            }
+
+            return false;
         }
 
         private static bool HasExceededDragThreshold(Point start, Point current)

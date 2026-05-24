@@ -1,5 +1,6 @@
 using EarTrumpet.Extensions;
 using EarTrumpet.Interop;
+using EarTrumpet.UI.Helpers;
 using EarTrumpet.UI.ViewModels;
 using System.Diagnostics;
 using System.Windows;
@@ -20,6 +21,7 @@ namespace EarTrumpet.UI.Views
             _windowAndItemSize = (double)App.Current.Resources["WindowAndItemSize"];
 
             InitializeComponent();
+            AppDragDropFlyout.Attach(ContentGrid, () => DataContext as IPopupHostViewModel);
             SourceInitialized += (sender, __) =>
             {
                 this.Cloak();

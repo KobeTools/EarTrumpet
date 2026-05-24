@@ -32,6 +32,8 @@ namespace EarTrumpet.UI.Views
         public static readonly DependencyProperty IsDropTargetProperty =
             DependencyProperty.Register(nameof(IsDropTarget), typeof(bool), typeof(DeviceView), new PropertyMetadata(false));
 
+        private int _dragOverCount;
+
         public DeviceView()
         {
             InitializeComponent();
@@ -39,9 +41,25 @@ namespace EarTrumpet.UI.Views
             DeviceListItem.PreviewKeyDown += OnPreviewKeyDown;
             DeviceListItem.PreviewMouseRightButtonUp += (_, __) => OpenPopup();
 
-            DragOver += OnDragOver;
-            DragLeave += OnDragLeave;
-            Drop += OnDrop;
+            RegisterDropTarget(this);
+            RegisterDropTarget(GridRoot);
+            RegisterDropTarget(DeviceListItem);
+            RegisterDropTarget(AppList);
+        }
+
+        private void RegisterDropTarget(UIElement element)
+        {
+            element.AllowDrop = true;
+            element.DragOver += OnDragOver;
+            element.DragEnter += OnDragEnter;
+            element.DragLeave += OnDragLeave;
+            element.Drop += OnDrop;
+        }
+
+        private void OnDragEnter(object sender, DragEventArgs e)
+        {
+            _dragOverCount++;
+            UpdateDropTarget(e);
         }
 
         private void OnDragOver(object sender, DragEventArgs e)
@@ -51,20 +69,40 @@ namespace EarTrumpet.UI.Views
 
         private void OnDragLeave(object sender, DragEventArgs e)
         {
-            IsDropTarget = false;
+            _dragOverCount--;
+            if (_dragOverCount <= 0)
+            {
+                _dragOverCount = 0;
+                IsDropTarget = false;
+            }
         }
 
         private void OnDrop(object sender, DragEventArgs e)
         {
+            _dragOverCount = 0;
             IsDropTarget = false;
 
-            if (!AppDragDrop.TryGetApp(e.Data, out var app) || !AppDragDrop.CanDrop(app, Device))
+            if (!AppDragDrop.TryGetApp(e.Data, out var app))
             {
+                DevTrace.Write($"Drop ignored on {Device.DisplayName}: no drag payload");
+                return;
+            }
+
+            if (!AppDragDrop.CanDrop(app, Device))
+            {
+                DevTrace.Write($"Drop ignored on {Device.DisplayName}: same device or not movable");
                 return;
             }
 
             var host = Window.GetWindow(this)?.DataContext as IPopupHostViewModel;
-            host?.MoveAppToDevice(app, Device);
+            if (host == null)
+            {
+                DevTrace.Write($"Drop failed on {Device.DisplayName}: no IPopupHostViewModel");
+                return;
+            }
+
+            DevTrace.Write($"Drop: {app.DisplayName} -> {Device.DisplayName}");
+            host.MoveAppToDevice(app, Device);
             e.Effects = DragDropEffects.Move;
             e.Handled = true;
         }

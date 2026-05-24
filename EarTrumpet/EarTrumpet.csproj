@@ -29,7 +29,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86' OR '$(Configuration)|$(Platform)' == 'VSDebug|x86'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>..\Build\Debug\</OutputPath>
-    <DefineConstants>TRACE;X86;DEBUG</DefineConstants>
+    <DefineConstants>TRACE;X86;DEBUG;DEVBUILD</DefineConstants>
     <DebugType>full</DebugType>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'VSDebug|x86'">
@@ -324,6 +324,9 @@
     <Compile Include="Extensions\IEnumerableExtensions.cs" />
     <Compile Include="UI\Helpers\RelayCommand.cs" />
     <Compile Include="UI\Helpers\AppDragDrop.cs" />
+    <Compile Include="UI\Helpers\AppDragDropFlyout.cs" />
+    <Compile Include="UI\Helpers\Branding.cs" />
+    <Compile Include="UI\Helpers\DevTrace.cs" />
     <Compile Include="UI\ViewModels\ToolbarItemViewModel.cs" />
     <Compile Include="Interop\Helpers\AccentPolicyLibrary.cs" />
     <Compile Include="DataModel\WindowsAudio\Internal\AudioPolicyConfigService.cs" />

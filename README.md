@@ -75,15 +75,25 @@ From the repository root in PowerShell:
 .\scripts\build-and-install.ps1
 ```
 
-This restores NuGet packages, builds the x86 app, installs it to `%LOCALAPPDATA%\Programs\EarTrumpet-Dev`, stops any running copy from that folder, and starts the new build. Use `-Configuration Release` for a release build or `-SkipLaunch` to install without starting the app.
+This builds **EarTrumpet Dev** (`EarTrumpetDev.exe`) and installs it to `%LOCALAPPDATA%\Programs\EarTrumpet-Dev`. It uses its own tray mutex so it can run **at the same time** as the Microsoft Store EarTrumpet. Hover the tray icon and confirm the tooltip starts with **EarTrumpet Dev:** (not plain `EarTrumpet:`).
 
-Requires Visual Studio (or Build Tools) with MSBuild, the [.NET Framework 4.6.2 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net462), the Windows 10 SDK (union metadata / `Windows.winmd`), and Git (used by the build versioning step). On a fresh machine, install prerequisites automatically:
+To rebuild and watch drag-and-drop debug logs in the terminal:
 
 ```powershell
-.\scripts\build-and-install.ps1 -InstallPrerequisites
+.\scripts\run-dev-with-logs.ps1 -Rebuild
 ```
 
-See [Compiling EarTrumpet](./COMPILING.md) for full setup details.
+Or, with EarTrumpet Dev already running, tail the log in another PowerShell window:
+
+```powershell
+Get-Content "$env:LOCALAPPDATA\Programs\EarTrumpet-Dev\eartrumpet-dev.log" -Wait -Tail 30
+```
+
+Use `-Configuration Release` for a release build or `-SkipLaunch` to install without starting the app.
+
+**Build prerequisites:** Visual Studio (or Build Tools) with MSBuild is enough on most machines. The script only checks for the [.NET Framework 4.6.2 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net462) reference assemblies and `Windows.winmd` (Windows SDK). Those are not always installed with VS even when you can open the solution—use `-InstallPrerequisites` only if the build reports they are missing. See [Compiling EarTrumpet](./COMPILING.md) for full setup details.
+
+**Trying drag between devices:** Expand the flyout (chevron at the top) so multiple output devices are visible, then drag an **app icon** (not the volume slider) onto another device section.
 
 ## Documentation
 * [Technical Information](./EarTrumpet/README.md)
