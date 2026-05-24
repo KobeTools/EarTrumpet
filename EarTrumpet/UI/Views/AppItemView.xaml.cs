@@ -12,6 +12,7 @@ namespace EarTrumpet.UI.Views
     public partial class AppItemView : UserControl
     {
         private Point? _dragStartPoint;
+        private Point? _dragStartInIcon;
         private bool _isDragInProgress;
 
         public AppItemView()
@@ -57,6 +58,7 @@ namespace EarTrumpet.UI.Views
             }
 
             _dragStartPoint = e.GetPosition(this);
+            _dragStartInIcon = e.GetPosition(IconDragSource);
             _isDragInProgress = false;
             var listDeviceId = this.FindVisualParent<DeviceView>()?.Device?.Id;
             DevTrace.Write($"Drag armed: {app.DisplayName} listed under {listDeviceId} (parent {app.Parent?.Id})");
@@ -92,13 +94,19 @@ namespace EarTrumpet.UI.Views
             };
 
             DevTrace.Write($"Drag start: {app.DisplayName} listed under {dragInfo.ListDeviceId} (parent {app.Parent?.Id})");
-            AppDragGhost ghost = null;
+            var hotspot = _dragStartInIcon ?? new Point(IconDragSource.ActualWidth / 2, IconDragSource.ActualHeight / 2);
+            var window = Window.GetWindow(this);
+            var iconOpacity = IconDragSource.Opacity;
+            IconDragSource.Opacity = 0.35;
             try
             {
-                ghost = AppDragGhost.Start(IconDragSource);
                 var data = new DataObject(AppDragDrop.Format, dragInfo);
-                var effect = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
-                DevTrace.Write($"Drag end: {app.DisplayName} effect={effect}");
+                using (var hint = AppDragFlyoutHint.TryStart(window, IconDragSource, hotspot))
+                {
+                    AppDragImage.TryApplyShell(data, IconDragSource, hotspot);
+                    var effect = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
+                    DevTrace.Write($"Drag end: {app.DisplayName} effect={effect}");
+                }
             }
             catch (Exception ex)
             {
@@ -106,7 +114,8 @@ namespace EarTrumpet.UI.Views
             }
             finally
             {
-                ghost?.Dispose();
+                IconDragSource.Opacity = iconOpacity;
+                _dragStartInIcon = null;
                 _isDragInProgress = false;
                 AppDragDropFlyout.EndDrag();
             }
@@ -120,6 +129,7 @@ namespace EarTrumpet.UI.Views
             }
 
             _dragStartPoint = null;
+            _dragStartInIcon = null;
             _isDragInProgress = false;
         }
 

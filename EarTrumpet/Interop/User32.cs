@@ -270,6 +270,10 @@ namespace EarTrumpet.Interop
         public static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll", PreserveSig = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
+        [DllImport("user32.dll", PreserveSig = true)]
         public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
         [DllImport("user32.dll", PreserveSig = true, CharSet = CharSet.Unicode)]
