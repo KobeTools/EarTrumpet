@@ -9,26 +9,33 @@ namespace EarTrumpet.UI.Helpers
 {
     public static class DevTrace
     {
+        private static readonly object Gate = new object();
+        private static bool _initialized;
+
         public static string LogFilePath { get; private set; }
 
         public static void Initialize()
         {
 #if DEVBUILD
-            var installDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            LogFilePath = Path.Combine(installDir, "eartrumpet-dev.log");
-
-            Directory.CreateDirectory(installDir);
-
-            var listener = new TextWriterTraceListener(LogFilePath)
+            lock (Gate)
             {
-                TraceOutputOptions = TraceOptions.DateTime,
-            };
+                if (_initialized)
+                {
+                    return;
+                }
 
-            Trace.Listeners.Add(listener);
-            Trace.AutoFlush = true;
+                var installDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                LogFilePath = Path.Combine(installDir, "eartrumpet-dev.log");
+                Directory.CreateDirectory(installDir);
+
+                var version = Assembly.GetExecutingAssembly().GetName().Version;
+                WriteCore($"--- session {DateTime.Now:yyyy-MM-dd HH:mm:ss} v{version} ---");
+                WriteCore($"DevTrace initialized -> {LogFilePath}");
+
+                _initialized = true;
+            }
 
             RegisterGlobalHandlers();
-            Write($"DevTrace initialized -> {LogFilePath}");
 #endif
         }
 
@@ -55,28 +62,54 @@ namespace EarTrumpet.UI.Helpers
                 };
             }
         }
-#endif
 
-        [Conditional("DEVBUILD")]
-        public static void Write(string message)
+        private static void WriteCore(string message)
         {
-#if DEVBUILD
-            Trace.WriteLine($"[EarTrumpet Dev] {message}");
-#endif
-        }
-
-        [Conditional("DEVBUILD")]
-        public static void LogException(string context, Exception ex)
-        {
-#if DEVBUILD
-            if (ex == null)
+            if (string.IsNullOrEmpty(LogFilePath))
             {
-                Write($"{context}: (null exception)");
                 return;
             }
 
-            Trace.WriteLine($"[EarTrumpet Dev] EXCEPTION ({context}): {ex}");
-            Trace.Flush();
+            var line = $"[{DateTime.Now:HH:mm:ss.fff}] [EarTrumpet Dev] {message}{Environment.NewLine}";
+            File.AppendAllText(LogFilePath, line);
+            Debug.Write(line);
+        }
+#endif
+
+        public static void Write(string message)
+        {
+#if DEVBUILD
+            lock (Gate)
+            {
+                if (!_initialized)
+                {
+                    Initialize();
+                }
+
+                WriteCore(message);
+            }
+#endif
+        }
+
+        public static void LogException(string context, Exception ex)
+        {
+#if DEVBUILD
+            lock (Gate)
+            {
+                if (!_initialized)
+                {
+                    Initialize();
+                }
+
+                if (ex == null)
+                {
+                    WriteCore($"{context}: (null exception)");
+                }
+                else
+                {
+                    WriteCore($"EXCEPTION ({context}): {ex}");
+                }
+            }
 #endif
         }
     }

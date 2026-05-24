@@ -9,48 +9,38 @@ using System.Windows.Media;
 namespace EarTrumpet.UI.Helpers
 {
     /// <summary>
-    /// Flyout-wide drag/drop so drops work over app rows, sliders, and device chrome (WPF only
-    /// hits AllowDrop elements under the cursor; hit-testing finds the owning DeviceView).
+    /// Optional flyout-wide drop assist (highlights + drop on gaps). Does not replace DeviceView drop targets.
     /// </summary>
     public static class AppDragDropFlyout
     {
         private static DeviceView _highlightedDeviceView;
-        private static string _lastRejectReason;
 
         public static void Attach(FrameworkElement root, Func<IPopupHostViewModel> getHost)
         {
             root.AllowDrop = true;
-            root.PreviewDragOver += (_, e) => OnDragOver(root, getHost, e);
+            root.PreviewDragOver += (_, e) => OnDragOver(root, e);
             root.PreviewDrop += (_, e) => OnDrop(root, getHost, e);
             root.PreviewDragLeave += (_, __) => ClearHighlight();
-            root.PreviewDragEnter += (_, e) => OnDragOver(root, getHost, e);
         }
 
-        private static void OnDragOver(FrameworkElement root, Func<IPopupHostViewModel> getHost, DragEventArgs e)
+        private static void OnDragOver(FrameworkElement root, DragEventArgs e)
         {
-            if (!AppDragDrop.TryGetApp(e.Data, out var app))
+            if (!AppDragDrop.TryGetDragInfo(e.Data, out var dragInfo))
             {
-                e.Effects = DragDropEffects.None;
-                e.Handled = true;
-                LogRejectOnce("drag payload missing");
                 ClearHighlight();
                 return;
             }
 
+            var app = dragInfo.App;
             var deviceView = FindDeviceView(root, e.GetPosition(root));
             var device = deviceView?.Device;
 
-            if (device != null && AppDragDrop.CanDrop(app, device))
+            if (device != null && AppDragDrop.CanDrop(app, device, dragInfo.ListDeviceId))
             {
-                e.Effects = DragDropEffects.Move;
-                e.Handled = true;
                 SetHighlight(deviceView);
             }
             else
             {
-                e.Effects = DragDropEffects.None;
-                e.Handled = true;
-                LogRejectOnce(AppDragDrop.DescribeDropRejectReason(app, device, deviceView != null));
                 ClearHighlight();
             }
         }
@@ -59,30 +49,35 @@ namespace EarTrumpet.UI.Helpers
         {
             ClearHighlight();
 
+            if (e.Handled)
+            {
+                return;
+            }
+
             try
             {
-                if (!AppDragDrop.TryGetApp(e.Data, out var app))
+                if (!AppDragDrop.TryGetDragInfo(e.Data, out var dragInfo))
                 {
-                    DevTrace.Write("Drop ignored: no drag payload");
                     return;
                 }
 
+                var app = dragInfo.App;
                 var deviceView = FindDeviceView(root, e.GetPosition(root));
                 var device = deviceView?.Device;
-                if (device == null || !AppDragDrop.CanDrop(app, device))
+                if (device == null || !AppDragDrop.CanDrop(app, device, dragInfo.ListDeviceId))
                 {
-                    DevTrace.Write($"Drop ignored: {AppDragDrop.DescribeDropRejectReason(app, device, deviceView != null)}");
+                    DevTrace.Write($"Flyout drop ignored: {AppDragDrop.DescribeDropRejectReason(app, device, device != null, dragInfo.ListDeviceId)}");
                     return;
                 }
 
                 var host = getHost();
                 if (host == null)
                 {
-                    DevTrace.Write("Drop failed: no IPopupHostViewModel on window");
+                    DevTrace.Write("Flyout drop failed: no IPopupHostViewModel");
                     return;
                 }
 
-                DevTrace.Write($"Drop: {app.DisplayName} (AppId={app.AppId}, Pid={app.ProcessId}) -> {device.DisplayName} ({device.Id})");
+                DevTrace.Write($"Flyout drop: {app.DisplayName} (from list {dragInfo.ListDeviceId}) -> {device.DisplayName}");
                 host.MoveAppToDevice(app, device);
                 e.Effects = DragDropEffects.Move;
                 e.Handled = true;
@@ -119,7 +114,6 @@ namespace EarTrumpet.UI.Helpers
         public static void EndDrag()
         {
             ClearHighlight();
-            _lastRejectReason = null;
         }
 
         private static void ClearHighlight()
@@ -129,17 +123,6 @@ namespace EarTrumpet.UI.Helpers
                 _highlightedDeviceView.IsDropTarget = false;
                 _highlightedDeviceView = null;
             }
-        }
-
-        private static void LogRejectOnce(string reason)
-        {
-            if (string.IsNullOrEmpty(reason) || reason == _lastRejectReason)
-            {
-                return;
-            }
-
-            _lastRejectReason = reason;
-            DevTrace.Write($"Drag over rejected: {reason}");
         }
     }
 }

@@ -73,7 +73,7 @@ namespace EarTrumpet.UI.ViewModels
         private int _volume;
         private bool _isMuted;
 
-        internal TemporaryAppItemViewModel(DeviceCollectionViewModel parent, IAudioDeviceManager deviceManager, IAppItemViewModel app, bool isChild = false)
+        internal TemporaryAppItemViewModel(DeviceCollectionViewModel parent, IAudioDeviceManager deviceManager, IAppItemViewModel app, IDeviceViewModel listDevice = null, bool isChild = false)
         {
             _parent = new WeakReference<DeviceCollectionViewModel>(parent);
             if (!isChild)
@@ -81,7 +81,7 @@ namespace EarTrumpet.UI.ViewModels
                 ChildApps = new ObservableCollection<IAppItemViewModel>();
                 foreach (var childApp in app.ChildApps)
                 {
-                    var vm = new TemporaryAppItemViewModel(parent, deviceManager, childApp, true);
+                    var vm = new TemporaryAppItemViewModel(parent, deviceManager, childApp, isChild: true);
                     vm.PropertyChanged += ChildApp_PropertyChanged;
                     ChildApps.Add(vm);
                 }
@@ -103,7 +103,7 @@ namespace EarTrumpet.UI.ViewModels
             PeakValue1 = 0;
             PeakValue2 = 0;
             ProcessId = app.ProcessId;
-            Parent = app.Parent;
+            Parent = listDevice ?? app.Parent;
 
             if (ChildApps != null)
             {

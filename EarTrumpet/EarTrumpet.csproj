@@ -325,6 +325,7 @@
     <Compile Include="UI\Helpers\RelayCommand.cs" />
     <Compile Include="UI\Helpers\AppDragDrop.cs" />
     <Compile Include="UI\Helpers\AppDragDropFlyout.cs" />
+    <Compile Include="UI\Helpers\AppDragGhost.cs" />
     <Compile Include="UI\Helpers\Branding.cs" />
     <Compile Include="UI\Helpers\DevTrace.cs" />
     <Compile Include="UI\ViewModels\ToolbarItemViewModel.cs" />

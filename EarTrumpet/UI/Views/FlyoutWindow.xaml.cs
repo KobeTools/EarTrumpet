@@ -19,7 +19,7 @@ namespace EarTrumpet.UI.Views
 
             InitializeComponent();
 
-            AppDragDropFlyout.Attach(LayoutRoot, () => DataContext as IPopupHostViewModel);
+            AppDragDropFlyout.Attach(ContentGrid, () => DataContext as IPopupHostViewModel);
 
             _viewModel.StateChanged += OnStateChanged;
             _viewModel.WindowSizeInvalidated += OnWindowsSizeInvalidated;

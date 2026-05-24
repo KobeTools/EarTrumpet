@@ -11,8 +11,6 @@ namespace EarTrumpet.UI.Views
 {
     public partial class AppItemView : UserControl
     {
-        private IAppItemViewModel App => (IAppItemViewModel)DataContext;
-
         private Point? _dragStartPoint;
         private bool _isDragInProgress;
 
@@ -35,6 +33,12 @@ namespace EarTrumpet.UI.Views
             };
         }
 
+        private bool TryGetApp(out IAppItemViewModel app)
+        {
+            app = DataContext as IAppItemViewModel;
+            return app != null;
+        }
+
         private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ChangedButton != MouseButton.Left || !IsPointerOverIcon(e.OriginalSource as DependencyObject))
@@ -42,15 +46,20 @@ namespace EarTrumpet.UI.Views
                 return;
             }
 
-            if (!AppDragDrop.CanDrag(App))
+            if (!TryGetApp(out var app) || !AppDragDrop.CanDrag(app))
             {
-                DevTrace.Write($"Drag blocked: {AppDragDrop.DescribeDragBlockReason(App)}");
+                if (TryGetApp(out app))
+                {
+                    DevTrace.Write($"Drag blocked: {AppDragDrop.DescribeDragBlockReason(app)}");
+                }
+
                 return;
             }
 
             _dragStartPoint = e.GetPosition(this);
             _isDragInProgress = false;
-            DevTrace.Write($"Drag armed: {App.DisplayName}");
+            var listDeviceId = this.FindVisualParent<DeviceView>()?.Device?.Id;
+            DevTrace.Write($"Drag armed: {app.DisplayName} listed under {listDeviceId} (parent {app.Parent?.Id})");
         }
 
         private void OnPreviewMouseMove(object sender, MouseEventArgs e)
@@ -60,7 +69,7 @@ namespace EarTrumpet.UI.Views
                 return;
             }
 
-            if (!AppDragDrop.CanDrag(App))
+            if (!TryGetApp(out var app) || !AppDragDrop.CanDrag(app))
             {
                 _dragStartPoint = null;
                 return;
@@ -75,19 +84,29 @@ namespace EarTrumpet.UI.Views
             _isDragInProgress = true;
             _dragStartPoint = null;
 
-            DevTrace.Write($"Drag start: {App.DisplayName} (device {App.Parent?.Id})");
+            var listDevice = this.FindVisualParent<DeviceView>()?.Device;
+            var dragInfo = new AppDragInfo
+            {
+                App = app,
+                ListDeviceId = listDevice?.Id,
+            };
+
+            DevTrace.Write($"Drag start: {app.DisplayName} listed under {dragInfo.ListDeviceId} (parent {app.Parent?.Id})");
+            AppDragGhost ghost = null;
             try
             {
-                var data = new DataObject(AppDragDrop.Format, App);
+                ghost = AppDragGhost.Start(IconDragSource);
+                var data = new DataObject(AppDragDrop.Format, dragInfo);
                 var effect = DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
-                DevTrace.Write($"Drag end: {App.DisplayName} effect={effect}");
+                DevTrace.Write($"Drag end: {app.DisplayName} effect={effect}");
             }
             catch (Exception ex)
             {
-                DevTrace.LogException($"DragDrop {App?.DisplayName}", ex);
+                DevTrace.LogException($"DragDrop {app?.DisplayName}", ex);
             }
             finally
             {
+                ghost?.Dispose();
                 _isDragInProgress = false;
                 AppDragDropFlyout.EndDrag();
             }
@@ -95,9 +114,9 @@ namespace EarTrumpet.UI.Views
 
         private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (_dragStartPoint != null)
+            if (_dragStartPoint != null && TryGetApp(out var app))
             {
-                DevTrace.Write($"Drag cancelled (no threshold): {App?.DisplayName}");
+                DevTrace.Write($"Drag cancelled (no threshold): {app.DisplayName}");
             }
 
             _dragStartPoint = null;
@@ -127,31 +146,36 @@ namespace EarTrumpet.UI.Views
         private static bool HasExceededDragThreshold(Point start, Point current)
         {
             var diff = start - current;
-            return System.Math.Abs(diff.X) >= SystemParameters.MinimumHorizontalDragDistance ||
-                   System.Math.Abs(diff.Y) >= SystemParameters.MinimumVerticalDragDistance;
+            return Math.Abs(diff.X) >= SystemParameters.MinimumHorizontalDragDistance ||
+                   Math.Abs(diff.Y) >= SystemParameters.MinimumVerticalDragDistance;
         }
 
         private void OnPreviewKeyDown(object sender, KeyEventArgs e)
         {
+            if (!TryGetApp(out var app))
+            {
+                return;
+            }
+
             switch (e.Key)
             {
                 case Key.M:
                 case Key.OemPeriod:
-                    App.IsMuted = !App.IsMuted;
+                    app.IsMuted = !app.IsMuted;
                     e.Handled = true;
                     break;
                 case Key.Right:
                 case Key.OemPlus:
-                    App.Volume++;
+                    app.Volume++;
                     e.Handled = true;
                     break;
                 case Key.Left:
                 case Key.OemMinus:
-                    App.Volume--;
+                    app.Volume--;
                     e.Handled = true;
                     break;
                 case Key.Space:
-                    OpenPopup();
+                    OpenPopup(app);
                     e.Handled = true;
                     break;
             }
@@ -159,10 +183,18 @@ namespace EarTrumpet.UI.Views
 
         private void OpenPopup()
         {
-            var viewModel = Window.GetWindow(this).DataContext as IPopupHostViewModel;
-            if (viewModel != null && App != null && !App.IsExpanded)
+            if (TryGetApp(out var app))
             {
-                viewModel.OpenPopup(App, this);
+                OpenPopup(app);
+            }
+        }
+
+        private void OpenPopup(IAppItemViewModel app)
+        {
+            var viewModel = Window.GetWindow(this).DataContext as IPopupHostViewModel;
+            if (viewModel != null && app != null && !app.IsExpanded)
+            {
+                viewModel.OpenPopup(app, this);
             }
         }
     }

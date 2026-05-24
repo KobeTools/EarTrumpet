@@ -1,5 +1,6 @@
 ﻿using EarTrumpet.UI.Helpers;
 using EarTrumpet.UI.ViewModels;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -81,35 +82,50 @@ namespace EarTrumpet.UI.Views
         {
             _dragOverCount = 0;
             IsDropTarget = false;
+            AppDragDropFlyout.EndDrag();
 
-            if (!AppDragDrop.TryGetApp(e.Data, out var app))
+            try
             {
-                DevTrace.Write($"Drop ignored on {Device.DisplayName}: no drag payload");
-                return;
-            }
+                if (!AppDragDrop.TryGetDragInfo(e.Data, out var dragInfo))
+                {
+                    DevTrace.Write($"Drop ignored on {Device.DisplayName}: no drag payload");
+                    return;
+                }
 
-            if (!AppDragDrop.CanDrop(app, Device))
+                var app = dragInfo.App;
+                var listDeviceId = dragInfo.ListDeviceId;
+
+                if (!AppDragDrop.CanDrop(app, Device, listDeviceId))
+                {
+                    DevTrace.Write($"Drop ignored on {Device.DisplayName}: {AppDragDrop.DescribeDropRejectReason(app, Device, true, listDeviceId)}");
+                    return;
+                }
+
+                var host = Window.GetWindow(this)?.DataContext as IPopupHostViewModel;
+                if (host == null)
+                {
+                    DevTrace.Write($"Drop failed on {Device.DisplayName}: no IPopupHostViewModel");
+                    return;
+                }
+
+                DevTrace.Write($"Drop: {app.DisplayName} -> {Device.DisplayName} ({Device.Id})");
+                host.MoveAppToDevice(app, Device);
+                e.Effects = DragDropEffects.Move;
+                e.Handled = true;
+            }
+            catch (Exception ex)
             {
-                DevTrace.Write($"Drop ignored on {Device.DisplayName}: same device or not movable");
-                return;
+                DevTrace.LogException($"Drop on {Device.DisplayName}", ex);
             }
-
-            var host = Window.GetWindow(this)?.DataContext as IPopupHostViewModel;
-            if (host == null)
-            {
-                DevTrace.Write($"Drop failed on {Device.DisplayName}: no IPopupHostViewModel");
-                return;
-            }
-
-            DevTrace.Write($"Drop: {app.DisplayName} -> {Device.DisplayName}");
-            host.MoveAppToDevice(app, Device);
-            e.Effects = DragDropEffects.Move;
-            e.Handled = true;
         }
 
         private void UpdateDropTarget(DragEventArgs e)
         {
-            if (AppDragDrop.TryGetApp(e.Data, out var app) && AppDragDrop.CanDrop(app, Device))
+            AppDragDrop.TryGetDragInfo(e.Data, out var dragInfo);
+            var app = dragInfo?.App;
+            var listDeviceId = dragInfo?.ListDeviceId;
+
+            if (app != null && AppDragDrop.CanDrop(app, Device, listDeviceId))
             {
                 e.Effects = DragDropEffects.Move;
                 e.Handled = true;
