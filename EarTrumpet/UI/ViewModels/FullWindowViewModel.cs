@@ -58,6 +58,11 @@ namespace EarTrumpet.UI.ViewModels
             }
         }
 
+        public void MoveAppToDevice(IAppItemViewModel app, DeviceViewModel device)
+        {
+            _mainViewModel.MoveAppToDevice(app, device);
+        }
+
         public void OnClosing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             switch (_state)

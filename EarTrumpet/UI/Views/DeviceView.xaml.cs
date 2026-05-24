@@ -23,12 +23,66 @@ namespace EarTrumpet.UI.Views
         public static readonly DependencyProperty IsAppListVisibleProperty =
             DependencyProperty.Register("IsAppListVisible", typeof(bool), typeof(DeviceView), new PropertyMetadata(true));
 
+        public bool IsDropTarget
+        {
+            get => (bool)GetValue(IsDropTargetProperty);
+            set => SetValue(IsDropTargetProperty, value);
+        }
+
+        public static readonly DependencyProperty IsDropTargetProperty =
+            DependencyProperty.Register(nameof(IsDropTarget), typeof(bool), typeof(DeviceView), new PropertyMetadata(false));
+
         public DeviceView()
         {
             InitializeComponent();
 
             DeviceListItem.PreviewKeyDown += OnPreviewKeyDown;
             DeviceListItem.PreviewMouseRightButtonUp += (_, __) => OpenPopup();
+
+            DragOver += OnDragOver;
+            DragLeave += OnDragLeave;
+            Drop += OnDrop;
+        }
+
+        private void OnDragOver(object sender, DragEventArgs e)
+        {
+            UpdateDropTarget(e);
+        }
+
+        private void OnDragLeave(object sender, DragEventArgs e)
+        {
+            IsDropTarget = false;
+        }
+
+        private void OnDrop(object sender, DragEventArgs e)
+        {
+            IsDropTarget = false;
+
+            if (!AppDragDrop.TryGetApp(e.Data, out var app) || !AppDragDrop.CanDrop(app, Device))
+            {
+                return;
+            }
+
+            var host = Window.GetWindow(this)?.DataContext as IPopupHostViewModel;
+            host?.MoveAppToDevice(app, Device);
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+
+        private void UpdateDropTarget(DragEventArgs e)
+        {
+            if (AppDragDrop.TryGetApp(e.Data, out var app) && AppDragDrop.CanDrop(app, Device))
+            {
+                e.Effects = DragDropEffects.Move;
+                e.Handled = true;
+                IsDropTarget = true;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+                e.Handled = true;
+                IsDropTarget = false;
+            }
         }
 
         public void FocusAndRemoveFocusVisual()

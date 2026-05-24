@@ -11,8 +11,11 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="{DynamicResource Mutable_VolumeCellWidth}" />
         </Grid.ColumnDefinitions>
-        <Grid Grid.Column="0" Margin="{StaticResource DeviceOrAppIconMargin}">
-            <Border Width="{DynamicResource Mutable_AppIconSize}"
+        <Grid x:Name="IconCell"
+              Grid.Column="0"
+              Margin="{StaticResource DeviceOrAppIconMargin}">
+            <Border x:Name="IconDragSource"
+                    Width="{DynamicResource Mutable_AppIconSize}"
                     Height="{DynamicResource Mutable_AppIconSize}"
                     HorizontalAlignment="Center">
                 <Border.Style>
@@ -60,6 +63,7 @@
                     Width="{DynamicResource Mutable_AppIconSize}"
                     Height="{DynamicResource Mutable_AppIconSize}"
                     Command="{Binding ToggleMute}"
+                    IsHitTestVisible="False"
                     IsTabStop="False"
                     ToolTip="{Binding DisplayName}">
                 <Button.Style>
@@ -67,6 +71,7 @@
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsMuted}" Value="true">
                                 <Setter Property="Opacity" Value="1" />
+                                <Setter Property="IsHitTestVisible" Value="True" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>

@@ -67,6 +67,24 @@ Or via command line using either
 
 Want to see what we were working on? Or help us test new features? [Install EarTrumpet from the dev channel.](https://install.eartrumpet.app/dev/EarTrumpet.Package.appinstaller) New builds are released automatically every time we commit to the `dev` branch, keeping you up to date on our progress.
 
+## Local build and reinstall (fork)
+
+From the repository root in PowerShell:
+
+```powershell
+.\scripts\build-and-install.ps1
+```
+
+This restores NuGet packages, builds the x86 app, installs it to `%LOCALAPPDATA%\Programs\EarTrumpet-Dev`, stops any running copy from that folder, and starts the new build. Use `-Configuration Release` for a release build or `-SkipLaunch` to install without starting the app.
+
+Requires Visual Studio (or Build Tools) with MSBuild, the [.NET Framework 4.6.2 Developer Pack](https://dotnet.microsoft.com/download/dotnet-framework/net462), the Windows 10 SDK (union metadata / `Windows.winmd`), and Git (used by the build versioning step). On a fresh machine, install prerequisites automatically:
+
+```powershell
+.\scripts\build-and-install.ps1 -InstallPrerequisites
+```
+
+See [Compiling EarTrumpet](./COMPILING.md) for full setup details.
+
 ## Documentation
 * [Technical Information](./EarTrumpet/README.md)
 * [Compiling EarTrumpet](./COMPILING.md)

@@ -134,6 +134,9 @@ publish/
 *.pubxml
 *.publishproj
 
+# Local build script tools (nuget.exe download)
+scripts/.tools/
+
 # NuGet Packages
 #*.nupkg
 # The packages folder can be ignored because of Package Restore

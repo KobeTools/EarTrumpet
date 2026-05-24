@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:EarTrumpet"
              xmlns:resx="clr-namespace:EarTrumpet.Properties"
              xmlns:views="clr-namespace:EarTrumpet.UI.Views"
+             AllowDrop="True"
              IsTabStop="False">
     <Grid Name="GridRoot">
         <Grid.RowDefinitions>
@@ -20,6 +21,9 @@
                 <Border.Style>
                     <Style TargetType="Border">
                         <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                <Setter Property="Theme:Brush.Background" Value="Theme=ControlHighlight/0.15, HighContrast=Highlight" />
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding Source={StaticResource ThemeManager}, Path=IsHighContrast}" Value="True">
                                 <Setter Property="BorderThickness" Value="0,0,0,1" />
                             </DataTrigger>
@@ -134,6 +138,9 @@
             <Border.Style>
                 <Style TargetType="Border">
                     <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                            <Setter Property="Theme:Brush.Background" Value="Theme=ControlHighlight/0.15, HighContrast=Highlight" />
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsAppListVisible}" Value="False">
                             <Setter Property="Visibility" Value="Collapsed" />
                         </DataTrigger>

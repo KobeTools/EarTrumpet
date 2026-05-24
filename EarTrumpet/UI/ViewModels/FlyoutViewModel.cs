@@ -316,6 +316,11 @@ namespace EarTrumpet.UI.ViewModels
             }
         }
 
+        public void MoveAppToDevice(IAppItemViewModel app, DeviceViewModel device)
+        {
+            _mainViewModel.MoveAppToDevice(app, device);
+        }
+
         private int OnMouseWheelEvent(object sender, System.Windows.Forms.MouseEventArgs e)
         {
             var existing = _mainViewModel.Default;

@@ -67,6 +67,8 @@
     <Reference Include="Windows, Version=255.255.255.255, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath Condition="Exists('$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\Windows.winmd')">$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\Windows.winmd</HintPath>
+      <HintPath Condition="Exists('$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.26100.0\Windows.winmd')">$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.26100.0\Windows.winmd</HintPath>
+      <HintPath Condition="Exists('$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.18362.0\Windows.winmd')">$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.18362.0\Windows.winmd</HintPath>
       <HintPath Condition="Exists('$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.16299.0\Windows.winmd')">$(MSBuildProgramFiles32)\Windows Kits\10\UnionMetadata\10.0.16299.0\Windows.winmd</HintPath>
     </Reference>
     <Reference Include="WindowsBase" />
@@ -321,6 +323,7 @@
     <Compile Include="UI\ViewModels\TemporaryAppItemViewModel.cs" />
     <Compile Include="Extensions\IEnumerableExtensions.cs" />
     <Compile Include="UI\Helpers\RelayCommand.cs" />
+    <Compile Include="UI\Helpers\AppDragDrop.cs" />
     <Compile Include="UI\ViewModels\ToolbarItemViewModel.cs" />
     <Compile Include="Interop\Helpers\AccentPolicyLibrary.cs" />
     <Compile Include="DataModel\WindowsAudio\Internal\AudioPolicyConfigService.cs" />
